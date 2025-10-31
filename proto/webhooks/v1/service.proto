@@ -1,0 +1,437 @@
+syntax = "proto3";
+
+package geniustechspace.webhooks.v1;
+
+import "google/api/annotations.proto";
+import "google/protobuf/timestamp.proto";
+import "google/protobuf/struct.proto";
+import "common/types.proto";
+
+option go_package = "github.com/geniustechspace/api-contracts/gen/go/webhooks/v1";
+option java_multiple_files = true;
+option java_package = "com.geniustechspace.api.webhooks.v1";
+
+// WebhookService manages webhook subscriptions and deliveries
+service WebhookService {
+  // Create webhook subscription
+  rpc CreateWebhook(CreateWebhookRequest) returns (CreateWebhookResponse) {
+    option (google.api.http) = {
+      post: "/v1/webhooks"
+      body: "*"
+    };
+  }
+
+  // Get webhook by ID
+  rpc GetWebhook(GetWebhookRequest) returns (GetWebhookResponse) {
+    option (google.api.http) = {
+      get: "/v1/webhooks/{webhook_id}"
+    };
+  }
+
+  // List webhooks
+  rpc ListWebhooks(ListWebhooksRequest) returns (ListWebhooksResponse) {
+    option (google.api.http) = {
+      get: "/v1/webhooks"
+    };
+  }
+
+  // Update webhook
+  rpc UpdateWebhook(UpdateWebhookRequest) returns (UpdateWebhookResponse) {
+    option (google.api.http) = {
+      patch: "/v1/webhooks/{webhook_id}"
+      body: "*"
+    };
+  }
+
+  // Delete webhook
+  rpc DeleteWebhook(DeleteWebhookRequest) returns (DeleteWebhookResponse) {
+    option (google.api.http) = {
+      delete: "/v1/webhooks/{webhook_id}"
+    };
+  }
+
+  // Test webhook
+  rpc TestWebhook(TestWebhookRequest) returns (TestWebhookResponse) {
+    option (google.api.http) = {
+      post: "/v1/webhooks/{webhook_id}/test"
+      body: "*"
+    };
+  }
+
+  // List webhook deliveries
+  rpc ListDeliveries(ListDeliveriesRequest) returns (ListDeliveriesResponse) {
+    option (google.api.http) = {
+      get: "/v1/webhooks/{webhook_id}/deliveries"
+    };
+  }
+
+  // Get delivery details
+  rpc GetDelivery(GetDeliveryRequest) returns (GetDeliveryResponse) {
+    option (google.api.http) = {
+      get: "/v1/webhooks/{webhook_id}/deliveries/{delivery_id}"
+    };
+  }
+
+  // Retry delivery
+  rpc RetryDelivery(RetryDeliveryRequest) returns (RetryDeliveryResponse) {
+    option (google.api.http) = {
+      post: "/v1/webhooks/{webhook_id}/deliveries/{delivery_id}/retry"
+      body: "*"
+    };
+  }
+
+  // Regenerate webhook secret
+  rpc RegenerateSecret(RegenerateSecretRequest) returns (RegenerateSecretResponse) {
+    option (google.api.http) = {
+      post: "/v1/webhooks/{webhook_id}/regenerate-secret"
+      body: "*"
+    };
+  }
+}
+
+// WebhookStatus represents webhook status
+enum WebhookStatus {
+  WEBHOOK_STATUS_UNSPECIFIED = 0;
+  WEBHOOK_STATUS_ACTIVE = 1;
+  WEBHOOK_STATUS_INACTIVE = 2;
+  WEBHOOK_STATUS_FAILED = 3;
+}
+
+// EventType represents webhook event types
+enum WebhookEventType {
+  WEBHOOK_EVENT_TYPE_UNSPECIFIED = 0;
+  // User events
+  WEBHOOK_EVENT_TYPE_USER_CREATED = 1;
+  WEBHOOK_EVENT_TYPE_USER_UPDATED = 2;
+  WEBHOOK_EVENT_TYPE_USER_DELETED = 3;
+  // Payment events
+  WEBHOOK_EVENT_TYPE_PAYMENT_CREATED = 10;
+  WEBHOOK_EVENT_TYPE_PAYMENT_SUCCEEDED = 11;
+  WEBHOOK_EVENT_TYPE_PAYMENT_FAILED = 12;
+  WEBHOOK_EVENT_TYPE_PAYMENT_REFUNDED = 13;
+  // Organization events
+  WEBHOOK_EVENT_TYPE_ORGANIZATION_CREATED = 20;
+  WEBHOOK_EVENT_TYPE_ORGANIZATION_UPDATED = 21;
+  WEBHOOK_EVENT_TYPE_ORGANIZATION_DELETED = 22;
+  WEBHOOK_EVENT_TYPE_MEMBER_ADDED = 23;
+  WEBHOOK_EVENT_TYPE_MEMBER_REMOVED = 24;
+  // Notification events
+  WEBHOOK_EVENT_TYPE_NOTIFICATION_SENT = 30;
+  // Custom events
+  WEBHOOK_EVENT_TYPE_CUSTOM = 100;
+}
+
+// DeliveryStatus represents delivery attempt status
+enum DeliveryStatus {
+  DELIVERY_STATUS_UNSPECIFIED = 0;
+  DELIVERY_STATUS_PENDING = 1;
+  DELIVERY_STATUS_DELIVERED = 2;
+  DELIVERY_STATUS_FAILED = 3;
+  DELIVERY_STATUS_RETRYING = 4;
+}
+
+// Webhook represents a webhook subscription
+message Webhook {
+  // Webhook ID
+  string webhook_id = 1;
+
+  // User or organization ID
+  string owner_id = 2;
+
+  // Webhook URL
+  string url = 3;
+
+  // Description
+  string description = 4;
+
+  // Status
+  WebhookStatus status = 5;
+
+  // Subscribed events
+  repeated WebhookEventType events = 6;
+
+  // Secret for signature verification
+  string secret = 7;
+
+  // Custom headers
+  map<string, string> headers = 8;
+
+  // Whether active
+  bool is_active = 9;
+
+  // Metadata
+  common.Metadata metadata = 10;
+
+  // Success count
+  int64 success_count = 11;
+
+  // Failure count
+  int64 failure_count = 12;
+
+  // Last delivery timestamp
+  google.protobuf.Timestamp last_delivery_at = 13;
+
+  // Retry configuration
+  RetryConfig retry_config = 14;
+}
+
+// RetryConfig represents retry configuration
+message RetryConfig {
+  // Max retry attempts
+  int32 max_attempts = 1;
+
+  // Initial retry delay (seconds)
+  int32 initial_delay = 2;
+
+  // Max retry delay (seconds)
+  int32 max_delay = 3;
+
+  // Backoff multiplier
+  float backoff_multiplier = 4;
+}
+
+// WebhookDelivery represents a webhook delivery attempt
+message WebhookDelivery {
+  // Delivery ID
+  string delivery_id = 1;
+
+  // Webhook ID
+  string webhook_id = 2;
+
+  // Event type
+  WebhookEventType event_type = 3;
+
+  // Status
+  DeliveryStatus status = 4;
+
+  // Request payload
+  google.protobuf.Struct payload = 5;
+
+  // Response status code
+  int32 response_status_code = 6;
+
+  // Response body
+  string response_body = 7;
+
+  // Response headers
+  map<string, string> response_headers = 8;
+
+  // Attempt number
+  int32 attempt = 9;
+
+  // Error message
+  string error_message = 10;
+
+  // Duration (milliseconds)
+  int64 duration_ms = 11;
+
+  // Timestamp
+  google.protobuf.Timestamp timestamp = 12;
+
+  // Next retry at
+  google.protobuf.Timestamp next_retry_at = 13;
+}
+
+// CreateWebhookRequest creates webhook
+message CreateWebhookRequest {
+  // Webhook URL
+  string url = 1;
+
+  // Description
+  string description = 2;
+
+  // Subscribed events
+  repeated WebhookEventType events = 3;
+
+  // Custom headers
+  map<string, string> headers = 4;
+
+  // Retry configuration
+  RetryConfig retry_config = 5;
+}
+
+// CreateWebhookResponse returns created webhook
+message CreateWebhookResponse {
+  // Webhook
+  Webhook webhook = 1;
+}
+
+// GetWebhookRequest gets webhook
+message GetWebhookRequest {
+  // Webhook ID
+  string webhook_id = 1;
+}
+
+// GetWebhookResponse returns webhook
+message GetWebhookResponse {
+  // Webhook
+  Webhook webhook = 1;
+}
+
+// ListWebhooksRequest lists webhooks
+message ListWebhooksRequest {
+  // Pagination
+  common.PaginationRequest pagination = 1;
+
+  // Filter by status
+  optional WebhookStatus status = 2;
+
+  // Filter by event type
+  optional WebhookEventType event_type = 3;
+}
+
+// ListWebhooksResponse returns webhooks
+message ListWebhooksResponse {
+  // Webhooks
+  repeated Webhook webhooks = 1;
+
+  // Pagination
+  common.PaginationResponse pagination = 2;
+}
+
+// UpdateWebhookRequest updates webhook
+message UpdateWebhookRequest {
+  // Webhook ID
+  string webhook_id = 1;
+
+  // URL
+  optional string url = 2;
+
+  // Description
+  optional string description = 3;
+
+  // Events
+  repeated WebhookEventType events = 4;
+
+  // Custom headers
+  map<string, string> headers = 5;
+
+  // Is active
+  optional bool is_active = 6;
+
+  // Retry configuration
+  optional RetryConfig retry_config = 7;
+}
+
+// UpdateWebhookResponse returns updated webhook
+message UpdateWebhookResponse {
+  // Webhook
+  Webhook webhook = 1;
+}
+
+// DeleteWebhookRequest deletes webhook
+message DeleteWebhookRequest {
+  // Webhook ID
+  string webhook_id = 1;
+}
+
+// DeleteWebhookResponse confirms deletion
+message DeleteWebhookResponse {
+  // Success
+  bool success = 1;
+}
+
+// TestWebhookRequest tests webhook
+message TestWebhookRequest {
+  // Webhook ID
+  string webhook_id = 1;
+
+  // Event type to test
+  WebhookEventType event_type = 2;
+
+  // Custom payload
+  optional google.protobuf.Struct payload = 3;
+}
+
+// TestWebhookResponse returns test result
+message TestWebhookResponse {
+  // Success
+  bool success = 1;
+
+  // Status code
+  int32 status_code = 2;
+
+  // Response body
+  string response_body = 3;
+
+  // Duration (milliseconds)
+  int64 duration_ms = 4;
+
+  // Error message
+  string error_message = 5;
+}
+
+// ListDeliveriesRequest lists deliveries
+message ListDeliveriesRequest {
+  // Webhook ID
+  string webhook_id = 1;
+
+  // Pagination
+  common.PaginationRequest pagination = 2;
+
+  // Filter by status
+  optional DeliveryStatus status = 3;
+
+  // Filter by event type
+  optional WebhookEventType event_type = 4;
+
+  // Filter by start date
+  optional google.protobuf.Timestamp start_date = 5;
+
+  // Filter by end date
+  optional google.protobuf.Timestamp end_date = 6;
+}
+
+// ListDeliveriesResponse returns deliveries
+message ListDeliveriesResponse {
+  // Deliveries
+  repeated WebhookDelivery deliveries = 1;
+
+  // Pagination
+  common.PaginationResponse pagination = 2;
+}
+
+// GetDeliveryRequest gets delivery
+message GetDeliveryRequest {
+  // Webhook ID
+  string webhook_id = 1;
+
+  // Delivery ID
+  string delivery_id = 2;
+}
+
+// GetDeliveryResponse returns delivery
+message GetDeliveryResponse {
+  // Delivery
+  WebhookDelivery delivery = 1;
+}
+
+// RetryDeliveryRequest retries delivery
+message RetryDeliveryRequest {
+  // Webhook ID
+  string webhook_id = 1;
+
+  // Delivery ID
+  string delivery_id = 2;
+}
+
+// RetryDeliveryResponse returns retry result
+message RetryDeliveryResponse {
+  // Delivery
+  WebhookDelivery delivery = 1;
+}
+
+// RegenerateSecretRequest regenerates secret
+message RegenerateSecretRequest {
+  // Webhook ID
+  string webhook_id = 1;
+}
+
+// RegenerateSecretResponse returns new secret
+message RegenerateSecretResponse {
+  // Webhook with new secret
+  Webhook webhook = 1;
+
+  // Old secret (for transition period)
+  string old_secret = 2;
+}

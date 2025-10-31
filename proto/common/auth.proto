@@ -1,0 +1,171 @@
+syntax = "proto3";
+
+package geniustechspace.common.v1;
+
+// =============================================================================
+// AUTHENTICATION MODULE - v1.0.0
+// =============================================================================
+//
+// Authentication and authorization types for secure access control.
+// Supports tokens, credentials, and OAuth 2.0 patterns.
+//
+// USAGE:
+// - User authentication flows
+// - API token management
+// - OAuth 2.0 and OpenID Connect
+//
+// COMPLIANCE:
+// - NIST 800-63B: Digital identity guidelines
+// - OAuth 2.0: RFC 6749
+// - PCI DSS: Secure credential handling
+//
+// =============================================================================
+
+import "google/protobuf/timestamp.proto";
+import "common/enums.proto";
+
+// Language-specific code generation options
+option go_package = "github.com/geniustechspace/api-contracts/gen/go/common/v1";
+option java_multiple_files = true;
+option java_package = "com.geniustechspace.api.common.v1";
+
+// =============================================================================
+// TOKEN
+// =============================================================================
+
+// Token represents an authentication or authorization token.
+//
+// USAGE:
+// - Access tokens, refresh tokens, API keys
+// - OAuth 2.0 and OpenID Connect flows
+// - Session management
+//
+// SECURITY:
+// - Never log token values
+// - Encrypt tokens at rest
+// - Use HTTPS for token transmission
+//
+// COMPLIANCE:
+// - NIST 800-63B: Token-based authentication
+// - OAuth 2.0: RFC 6749 token handling
+// - PCI DSS: Secure key management
+message Token {
+  // Opaque token value (JWT, random string, etc.).
+  // USAGE: Bearer token for Authorization header
+  // FORMAT: JWT (recommended), random base64 string, UUID
+  // SECURITY: Never log, encrypt at rest, transmit over HTTPS only
+  // LENGTH: 128-512 bytes recommended
+  string value = 1;
+
+  // Token type for Authorization header.
+  // USAGE: Specify authentication scheme
+  // EXAMPLE: "Bearer", "Basic", "API-Key"
+  // STANDARD: OAuth 2.0 token types (RFC 6749)
+  string type = 2;
+
+  // Token expiration timestamp.
+  // USAGE: Validate token freshness, implement token rotation
+  // COMPLIANCE: NIST 800-63B - Tokens must expire
+  // RECOMMENDATION:
+  //   - Access tokens: 15-60 minutes
+  //   - Refresh tokens: 1-30 days
+  //   - API keys: 90-365 days
+  google.protobuf.Timestamp expires_at = 3;
+
+  // When the token was issued.
+  // USAGE: Calculate token age, audit token usage
+  // FORMAT: UTC timezone
+  google.protobuf.Timestamp issued_at = 4;
+
+  // Optional refresh token for obtaining new access tokens.
+  // USAGE: OAuth 2.0 refresh token flow
+  // SECURITY: More sensitive than access tokens, stricter rotation
+  // LIFETIME: Longer than access tokens (days/weeks vs minutes/hours)
+  string refresh_token = 5;
+
+  // Scopes or permissions associated with this token.
+  // USAGE: Fine-grained authorization, principle of least privilege
+  // EXAMPLE: ["read:users", "write:posts", "admin:settings"]
+  // FORMAT: Colon-separated namespace:action or custom format
+  repeated string scopes = 6;
+
+  // Subject identifier (user ID, service account ID, etc.).
+  // USAGE: Identify the principal the token represents
+  // FORMAT: UUID, email, or service principal name
+  // COMPLIANCE: Required for audit trails
+  string subject = 7;
+
+  // Token issuer identifier.
+  // USAGE: Multi-tenant systems, federation scenarios
+  // EXAMPLE: "auth.example.com", "https://accounts.google.com"
+  // FORMAT: Domain or URL of the authentication service
+  string issuer = 8;
+
+  // Token audience (intended recipient).
+  // USAGE: Prevent token misuse across services
+  // EXAMPLE: "api.example.com", "service-a"
+  // VALIDATION: Services should verify audience matches
+  string audience = 9;
+}
+
+// =============================================================================
+// CREDENTIALS
+// =============================================================================
+
+// Credentials for username/password authentication.
+//
+// USAGE:
+// - Login operations
+// - Basic authentication
+// - Password reset flows
+//
+// SECURITY:
+// - Never log passwords
+// - Always hash passwords server-side
+// - Enforce strong password policies
+// - Use HTTPS for credential transmission
+//
+// COMPLIANCE:
+// - NIST 800-63B: Password-based authentication guidelines
+// - PCI DSS: Secure credential transmission and storage
+message Credentials {
+  // Username, email, or unique identifier.
+  // USAGE: User identification for authentication
+  // FORMAT: Email, username, or UUID
+  // VALIDATION: Non-empty, valid format
+  string username = 1;
+
+  // User password (plaintext, must be hashed server-side).
+  // USAGE: Authentication credential
+  // SECURITY:
+  //   - NEVER store plaintext passwords
+  //   - Hash with bcrypt, scrypt, or Argon2
+  //   - Minimum 8 characters (recommend 12+)
+  //   - Enforce complexity requirements
+  // COMPLIANCE: NIST 800-63B - Password guidelines
+  string password = 2;
+
+  // Optional multi-factor authentication code.
+  // USAGE: Second factor for 2FA/MFA
+  // FORMAT: 6-digit TOTP, SMS code, or longer backup code
+  // EXPIRATION: Typically 30-60 seconds for TOTP
+  string mfa_code = 3;
+
+  // MFA method used (if applicable).
+  // USAGE: Specify which MFA mechanism was used
+  // EXAMPLE: "totp", "sms", "email", "hardware_key"
+  // COMPLIANCE: NIST 800-63B - MFA authentication
+  string mfa_method = 4;
+
+  // Optional device identifier for device-based authentication.
+  // USAGE: Remember trusted devices, device fingerprinting
+  // FORMAT: UUID or device fingerprint hash
+  // SECURITY: Use secure device fingerprinting techniques
+  string device_id = 5;
+
+  // Whether to create a long-lived session ("remember me").
+  // USAGE: Extended session lifetime for trusted devices
+  // SECURITY: Increase token lifetime (e.g., from 1 hour to 30 days)
+  // RISK: Balance convenience vs security
+  bool remember_me = 6;
+}

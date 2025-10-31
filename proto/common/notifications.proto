@@ -1,0 +1,123 @@
+syntax = "proto3";
+
+package geniustechspace.common.v1;
+
+// =============================================================================
+// NOTIFICATIONS MODULE - v1.0.0
+// =============================================================================
+//
+// User notification preferences and delivery settings.
+// Supports multiple channels with opt-in/opt-out granularity.
+//
+// USAGE:
+// - User notification settings
+// - Communication preferences
+// - Multi-channel delivery
+//
+// COMPLIANCE:
+// - GDPR: Communication consent
+// - CAN-SPAM: Email opt-out requirements
+// - TCPA: SMS/phone consent (US)
+//
+// =============================================================================
+
+// Language-specific code generation options
+option go_package = "github.com/geniustechspace/api-contracts/gen/go/common/v1";
+option java_multiple_files = true;
+option java_package = "com.geniustechspace.api.common.v1";
+option csharp_namespace = "GeniusTechSpace.Api.Common.V1";
+option php_namespace = "GeniusTechSpace\\Api\\Common\\V1";
+option ruby_package = "GeniusTechSpace::Api::Common::V1";
+
+// =============================================================================
+// NOTIFICATION PREFERENCES
+// =============================================================================
+
+// NotificationPreferences manages user notification settings across channels.
+//
+// USAGE:
+// - Store per-user notification preferences
+// - Control notification delivery by category and channel
+// - Respect user opt-out choices
+//
+// COMPLIANCE:
+// - GDPR: Explicit consent required for marketing communications
+// - CAN-SPAM: Opt-out mechanism required for email
+// - TCPA: Prior express consent required for SMS (US)
+message NotificationPreferences {
+  // Whether email notifications are enabled globally.
+  // USAGE: Master switch for all email notifications
+  // DEFAULT: true (can be disabled)
+  // COMPLIANCE: CAN-SPAM - Must honor opt-out
+  bool email_enabled = 1;
+
+  // Whether SMS notifications are enabled globally.
+  // USAGE: Master switch for all SMS notifications
+  // DEFAULT: false (requires explicit opt-in)
+  // COMPLIANCE: TCPA - Requires prior express consent (US)
+  bool sms_enabled = 2;
+
+  // Whether push notifications are enabled globally.
+  // USAGE: Master switch for all push notifications
+  // DEFAULT: true (requires device permission)
+  bool push_enabled = 3;
+
+  // Whether in-app notifications are enabled globally.
+  // USAGE: Master switch for all in-app notifications
+  // DEFAULT: true
+  bool in_app_enabled = 4;
+
+  // Granular preferences by notification category.
+  // USAGE: Allow users to customize by notification type
+  // EXAMPLE:
+  //   - "security_alerts": {email: true, sms: true, push: true}
+  //   - "marketing": {email: false, sms: false, push: false}
+  //   - "updates": {email: true, sms: false, push: true}
+  // CATEGORIES: Define based on application needs
+  map<string, ChannelPreferences> category_preferences = 5;
+
+  // Preferred notification frequency.
+  // USAGE: Batch notifications to reduce noise
+  // VALUES: "realtime", "hourly", "daily", "weekly"
+  // DEFAULT: "realtime"
+  string frequency = 6;
+
+  // Quiet hours start time (24-hour format, e.g., "22:00").
+  // USAGE: Don't send notifications during quiet hours
+  // FORMAT: "HH:MM" in user's timezone
+  // EXAMPLE: "22:00" = 10 PM
+  string quiet_hours_start = 7;
+
+  // Quiet hours end time (24-hour format, e.g., "08:00").
+  // USAGE: Resume notifications after quiet hours
+  // FORMAT: "HH:MM" in user's timezone
+  // EXAMPLE: "08:00" = 8 AM
+  string quiet_hours_end = 8;
+
+  // User's timezone for quiet hours calculation.
+  // USAGE: Respect local time for quiet hours
+  // FORMAT: IANA timezone database name
+  // EXAMPLE: "America/New_York", "Europe/London"
+  string timezone = 9;
+
+  // Preferred language for notifications.
+  // USAGE: Localize notification content
+  // FORMAT: BCP 47 language tag
+  // EXAMPLE: "en-US", "fr-FR", "es-MX"
+  string language = 10;
+}
+
+// ChannelPreferences for a specific notification category.
+message ChannelPreferences {
+  // Email delivery enabled for this category.
+  bool email = 1;
+
+  // SMS delivery enabled for this category.
+  bool sms = 2;
+
+  // Push notification enabled for this category.
+  bool push = 3;
+
+  // In-app notification enabled for this category.
+  bool in_app = 4;
+}

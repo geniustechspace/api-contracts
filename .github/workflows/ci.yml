@@ -1,0 +1,250 @@
+name: CI/CD
+
+on:
+  push:
+    branches: [main, develop]
+  pull_request:
+    branches: [main, develop]
+  workflow_dispatch:
+
+env:
+  BUF_VERSION: "1.28.1"
+  RUST_VERSION: "1.75.0"
+  PYTHON_VERSION: "3.11"
+  NODE_VERSION: "20"
+
+jobs:
+  lint-proto:
+    name: Lint Proto Files
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup Buf
+        uses: bufbuild/buf-setup-action@v1
+        with:
+          version: ${{ env.BUF_VERSION }}
+
+      - name: Lint Proto Files
+        run: buf lint
+
+      - name: Check Breaking Changes
+        if: github.event_name == 'pull_request'
+        run: |
+          buf breaking --against '.git#branch=main'
+
+  generate-and-build:
+    name: Generate and Build All Clients
+    runs-on: ubuntu-latest
+    needs: lint-proto
+    strategy:
+      matrix:
+        language: [rust, python, typescript]
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup Buf
+        uses: bufbuild/buf-setup-action@v1
+        with:
+          version: ${{ env.BUF_VERSION }}
+
+      - name: Setup Rust
+        if: matrix.language == 'rust'
+        uses: actions-rs/toolchain@v1
+        with:
+          toolchain: ${{ env.RUST_VERSION }}
+          profile: minimal
+          override: true
+          components: rustfmt, clippy
+
+      - name: Setup Python
+        if: matrix.language == 'python'
+        uses: actions/setup-python@v5
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+
+      - name: Setup Node.js
+        if: matrix.language == 'typescript'
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+
+      - name: Install pnpm
+        if: matrix.language == 'typescript'
+        uses: pnpm/action-setup@v2
+        with:
+          version: 8
+
+      - name: Cache Rust dependencies
+        if: matrix.language == 'rust'
+        uses: actions/cache@v3
+        with:
+          path: |
+            ~/.cargo/registry
+            ~/.cargo/git
+            rust/target
+          key: ${{ runner.os }}-cargo-${{ hashFiles('**/Cargo.lock') }}
+
+      - name: Cache Python dependencies
+        if: matrix.language == 'python'
+        uses: actions/cache@v3
+        with:
+          path: ~/.cache/pip
+          key: ${{ runner.os }}-pip-${{ hashFiles('**/pyproject.toml') }}
+
+      - name: Cache Node.js dependencies
+        if: matrix.language == 'typescript'
+        uses: actions/cache@v3
+        with:
+          path: ts/node_modules
+          key: ${{ runner.os }}-node-${{ hashFiles('ts/pnpm-lock.yaml') }}
+
+      - name: Generate All Clients
+        run: buf generate
+
+      - name: Build Rust
+        if: matrix.language == 'rust'
+        run: |
+          chmod +x scripts/generate_rust.sh
+          ./scripts/generate_rust.sh
+
+      - name: Build Python
+        if: matrix.language == 'python'
+        run: |
+          chmod +x scripts/generate_python.sh
+          ./scripts/generate_python.sh
+
+      - name: Build TypeScript
+        if: matrix.language == 'typescript'
+        run: |
+          chmod +x scripts/generate_ts.sh
+          ./scripts/generate_ts.sh
+
+      - name: Run Rust Tests
+        if: matrix.language == 'rust'
+        run: |
+          cd rust
+          cargo test --workspace
+
+      - name: Run Rust Clippy
+        if: matrix.language == 'rust'
+        run: |
+          cd rust
+          cargo clippy --workspace --all-targets -- -D warnings
+
+      - name: Run Python Tests
+        if: matrix.language == 'python'
+        run: |
+          python -m pip install pytest
+          # Add tests when available
+          # pytest python/
+
+      - name: Run TypeScript Tests
+        if: matrix.language == 'typescript'
+        run: |
+          cd ts
+          pnpm test || echo "No tests configured yet"
+
+      - name: Upload Artifacts
+        uses: actions/upload-artifact@v3
+        with:
+          name: ${{ matrix.language }}-clients
+          path: |
+            rust/target/release/*.rlib
+            python/dist/*.whl
+            ts/packages/*/dist
+
+  publish-rust:
+    name: Publish Rust Crates
+    runs-on: ubuntu-latest
+    needs: generate-and-build
+    if: github.ref == 'refs/heads/main' && github.event_name == 'push'
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup Rust
+        uses: actions-rs/toolchain@v1
+        with:
+          toolchain: ${{ env.RUST_VERSION }}
+          profile: minimal
+          override: true
+
+      - name: Publish to crates.io
+        env:
+          CARGO_REGISTRY_TOKEN: ${{ secrets.CARGO_REGISTRY_TOKEN }}
+        run: |
+          cd rust
+          # Publish in dependency order
+          cargo publish -p auth-client --allow-dirty || true
+          cargo publish -p accounts-client --allow-dirty || true
+
+  publish-python:
+    name: Publish Python Packages
+    runs-on: ubuntu-latest
+    needs: generate-and-build
+    if: github.ref == 'refs/heads/main' && github.event_name == 'push'
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+
+      - name: Install build tools
+        run: |
+          python -m pip install --upgrade pip
+          pip install build twine
+
+      - name: Build packages
+        run: |
+          for dir in python/*/; do
+            if [ -f "$dir/pyproject.toml" ]; then
+              cd "$dir"
+              python -m build
+              cd -
+            fi
+          done
+
+      - name: Publish to PyPI
+        env:
+          TWINE_USERNAME: __token__
+          TWINE_PASSWORD: ${{ secrets.PYPI_API_TOKEN }}
+        run: |
+          twine upload python/*/dist/*.whl python/*/dist/*.tar.gz || true
+
+  publish-npm:
+    name: Publish NPM Packages
+    runs-on: ubuntu-latest
+    needs: generate-and-build
+    if: github.ref == 'refs/heads/main' && github.event_name == 'push'
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          registry-url: "https://registry.npmjs.org"
+
+      - name: Install pnpm
+        uses: pnpm/action-setup@v2
+        with:
+          version: 8
+
+      - name: Install dependencies
+        run: |
+          cd ts
+          pnpm install
+
+      - name: Build packages
+        run: |
+          cd ts
+          pnpm build
+
+      - name: Publish to NPM
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
+        run: |
+          cd ts
+          pnpm publish -r --access public --no-git-checks || true

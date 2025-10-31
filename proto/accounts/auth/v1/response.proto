@@ -1,0 +1,70 @@
+syntax = "proto3";
+
+package geniustechspace.accounts.auth.v1;
+
+import "google/api/annotations.proto";
+import "google/protobuf/timestamp.proto";
+import "common/types.proto";
+
+option go_package = "github.com/geniustechspace/api-contracts/gen/go/auth/v1";
+option java_multiple_files = true;
+option java_package = "com.geniustechspace.api.auth.v1";
+
+// ErrorCode represents authentication error types
+enum ErrorCode {
+  ERROR_CODE_UNSPECIFIED = 0;
+  ERROR_CODE_INVALID_CREDENTIALS = 1;
+  ERROR_CODE_USER_NOT_FOUND = 2;
+  ERROR_CODE_USER_ALREADY_EXISTS = 3;
+  ERROR_CODE_INVALID_TOKEN = 4;
+  ERROR_CODE_EXPIRED_TOKEN = 5;
+  ERROR_CODE_ACCOUNT_LOCKED = 6;
+  ERROR_CODE_ACCOUNT_SUSPENDED = 7;
+  ERROR_CODE_MFA_REQUIRED = 8;
+  ERROR_CODE_INVALID_MFA_CODE = 9;
+  ERROR_CODE_WEAK_PASSWORD = 10;
+  ERROR_CODE_RATE_LIMIT_EXCEEDED = 11;
+}
+
+// ErrorDetail provides detailed error information
+message ErrorDetail {
+  // Error code
+  ErrorCode code = 1;
+
+  // Human-readable error message
+  string message = 2;
+
+  // Field that caused the error (if applicable)
+  string field = 3;
+
+  // Additional context
+  map<string, string> metadata = 4;
+}
+
+// Status represents operation result status
+enum Status {
+  STATUS_UNSPECIFIED = 0;
+  STATUS_SUCCESS = 1;
+  STATUS_FAILURE = 2;
+  STATUS_PENDING = 3;
+  STATUS_PARTIAL_SUCCESS = 4;
+}
+
+// ApiResponse is a generic response wrapper
+message ApiResponse {
+  // Operation status
+  Status status = 1;
+
+  // Human-readable message
+  string message = 2;
+
+  // Error details if status is FAILURE
+  repeated ErrorDetail errors = 3;
+
+  // Request timestamp
+  google.protobuf.Timestamp timestamp = 4;
+
+  // Request ID for tracking
+  string request_id = 5;
+}
+

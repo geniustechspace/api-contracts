@@ -1,0 +1,26 @@
+[package]
+name = "accounts-client"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+repository.workspace = true
+description = "Generated gRPC client for Accounts Service"
+keywords = ["grpc", "protobuf", "accounts", "api"]
+categories = ["api-bindings", "network-programming"]
+
+[dependencies]
+tonic = { workspace = true }
+prost = { workspace = true }
+prost-types = { workspace = true }
+serde = { workspace = true, optional = true }
+serde_json = { workspace = true, optional = true }
+
+[build-dependencies]
+tonic-build = "0.10"
+
+[features]
+default = []
+serde = ["dep:serde", "dep:serde_json"]
+
+[lib]
+path = "src/lib.rs"

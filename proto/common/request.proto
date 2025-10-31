@@ -1,0 +1,133 @@
+syntax = "proto3";
+
+package geniustechspace.common.v1;
+
+// =============================================================================
+// REQUEST MODULE - v1.0.0
+// =============================================================================
+//
+// Request context and distributed tracing types for observability.
+// Enables correlation, debugging, and performance monitoring across services.
+//
+// USAGE:
+// - Middleware/interceptors
+// - Distributed tracing
+// - Security context propagation
+//
+// COMPLIANCE:
+// - SOC 2: Audit trails and request tracking
+// - W3C Trace Context: Distributed tracing standard
+//
+// =============================================================================
+
+import "google/protobuf/timestamp.proto";
+
+// Language-specific code generation options
+option go_package = "github.com/geniustechspace/api-contracts/gen/go/common/v1";
+option java_multiple_files = true;
+option java_package = "com.geniustechspace.api.common.v1";
+
+// =============================================================================
+// REQUEST CONTEXT
+// =============================================================================
+
+// RequestContext contains metadata about the request for correlation and auditing.
+//
+// USAGE:
+// - Attach to all incoming requests via middleware
+// - Propagate through service call chains
+// - Include in logs for correlation
+// - Required for distributed tracing
+//
+// COMPLIANCE:
+// - SOC 2: Request tracking and audit trails
+// - W3C Trace Context: Standard for distributed tracing
+message RequestContext {
+  // Unique request identifier (UUID v4 recommended).
+  // USAGE: Correlate logs across services, debug specific requests
+  // GENERATION: Generate at edge service, propagate downstream
+  // FORMAT: UUID v4 (128-bit)
+  // COMPLIANCE: SOC 2 - Required for audit trail
+  string request_id = 1;
+
+  // Distributed trace identifier (W3C Trace Context format).
+  // USAGE: OpenTelemetry, Jaeger, Zipkin integration
+  // FORMAT: 32 hexadecimal characters (16 bytes)
+  // EXAMPLE: "4bf92f3577b34da6a3ce929d0e0e4736"
+  // STANDARD: W3C Trace Context specification
+  string trace_id = 2;
+
+  // Span identifier for the current operation.
+  // USAGE: Identify specific operation in distributed trace
+  // FORMAT: 16 hexadecimal characters (8 bytes)
+  // EXAMPLE: "00f067aa0ba902b7"
+  // STANDARD: W3C Trace Context specification
+  string span_id = 3;
+
+  // Parent span identifier (if part of larger trace).
+  // USAGE: Link child spans to parent operations
+  // FORMAT: 16 hexadecimal characters (8 bytes)
+  // NULL: Root span (no parent)
+  string parent_span_id = 4;
+
+  // User identifier making the request (if authenticated).
+  // USAGE: User-scoped operations, audit trails, personalization
+  // FORMAT: UUID, email, or username
+  // NULL: Anonymous/unauthenticated requests
+  // COMPLIANCE: GDPR, SOC 2 - Required for user action audit
+  string user_id = 5;
+
+  // Session identifier (if applicable).
+  // USAGE: Track user session, correlate requests within session
+  // FORMAT: UUID or session token hash
+  // LIFETIME: Typically 30 minutes to 24 hours
+  string session_id = 7;
+
+  // Tenant or organization identifier (multi-tenant systems).
+  // USAGE: Data isolation, tenant-scoped queries, billing
+  // FORMAT: UUID or tenant slug
+  // COMPLIANCE: Data isolation requirements
+  string tenant_id = 8;
+
+  // Client IP address or network identifier.
+  // USAGE: Rate limiting, geolocation, security analysis
+  // FORMAT: IPv4 (dotted decimal) or IPv6 (colon hex)
+  // EXAMPLE: "192.168.1.1", "2001:db8::1"
+  // PRIVACY: Consider anonymization (GDPR)
+  string client_ip = 9;
+
+  // Client user agent string.
+  // USAGE: Device detection, analytics, compatibility
+  // EXAMPLE: "Mozilla/5.0 (Windows NT 10.0; Win64; x64)..."
+  // PRIVACY: May contain identifiable information
+  string user_agent = 10;
+
+  // Requested locale for internationalization.
+  // USAGE: Content localization, error messages
+  // FORMAT: BCP 47 language tag
+  // EXAMPLE: "en-US", "fr-FR", "es-MX"
+  // DEFAULT: "en-US"
+  string locale = 11;
+
+  // Timestamp when the request was received.
+  // USAGE: Request latency calculation, rate limiting windows
+  // FORMAT: UTC timezone
+  google.protobuf.Timestamp received_at = 12;
+
+  // Service or API version being called.
+  // USAGE: API versioning, compatibility handling
+  // FORMAT: Semantic versioning (e.g., "v1", "v2.1")
+  // EXAMPLE: "v1", "v2", "2024-01-15"
+  string api_version = 13;
+
+  // Environment where the request is processed.
+  // USAGE: Environment-specific behavior, routing
+  // EXAMPLE: "production", "staging", "development"
+  string environment = 14;
+
+  // Additional custom context key-value pairs.
+  // USAGE: Extend context without schema changes
+  // EXAMPLE: {"feature_flags": "new_ui=true", "ab_test": "variant_b"}
+  // SECURITY: Avoid sensitive data
+  map<string, string> custom_metadata = 20;
+}

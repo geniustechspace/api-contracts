@@ -1,0 +1,1486 @@
+syntax = "proto3";
+
+package geniustechspace.common.v1;
+
+// =============================================================================
+// ENTERPRISE COMMON ENUMS - v1.0.0
+// =============================================================================
+//
+// This file defines standardized enumerations for enterprise-grade API contracts
+// with focus on compliance, security, auditability, and operational excellence.
+//
+// DESIGN PRINCIPLES:
+// - Use 10-point numeric spacing for extensibility and intermediate values
+// - Never renumber existing entries (breaking change)
+// - Always include UNSPECIFIED/UNKNOWN as enum value 0
+// - Document compliance requirements (GDPR, SOC2, HIPAA, etc.)
+// - Align with industry standards (RFC 5424, ISO 27001, etc.)
+// - Provide clear guidance for service implementors
+//
+// VERSION HISTORY:
+// - 1.0.0 (2025-10-30): Initial enterprise-standard release
+//
+// COMPLIANCE SCOPE:
+// - GDPR (General Data Protection Regulation)
+// - CCPA (California Consumer Privacy Act)
+// - SOC 2 Type II (System and Organization Controls)
+// - ISO 27001 (Information Security Management)
+// - HIPAA (Health Insurance Portability and Accountability Act)
+// - PCI DSS (Payment Card Industry Data Security Standard)
+//
+// =============================================================================
+
+// Options for language-specific code generation and package mappings.
+option go_package = "github.com/geniustechspace/api-contracts/gen/go/common/v1";
+option java_multiple_files = true;
+option java_package = "com.geniustechspace.api.common.v1";
+
+// =============================================================================
+// SECTION 1: OPERATION STATUS & OUTCOMES
+// =============================================================================
+
+// Status represents the high-level outcome of an operation, workflow, or request.
+//
+// USAGE GUIDANCE:
+// - Use in response envelopes (ApiResponse, OperationResult)
+// - Include in audit logs for compliance tracking
+// - Map to HTTP status codes in gateway layer
+// - Use for workflow state machines and orchestration
+//
+// COMPLIANCE NOTES:
+// - SOC 2: Essential for operational monitoring and incident response
+// - ISO 27001: Required for security event logging (A.12.4)
+//
+// RELATED ENUMS:
+// - ErrorCode: For detailed error classification
+// - LifecycleState: For resource state management
+// - Severity: For log level classification
+enum Status {
+  // Default/uninitialized value. Should never be explicitly set.
+  // REQUIRED: proto3 best practice for enum zero value.
+  STATUS_UNSPECIFIED = 0;
+
+  // Operation completed successfully with all objectives met.
+  // HTTP: 200 OK, 201 Created, 204 No Content
+  STATUS_SUCCESS = 10;
+
+  // Operation failed irrecoverably. Manual intervention may be required.
+  // HTTP: 400 Bad Request, 500 Internal Server Error
+  STATUS_FAILURE = 20;
+
+  // Operation completed but some sub-operations failed.
+  // USAGE: Bulk operations, multi-step workflows
+  // HTTP: 207 Multi-Status
+  STATUS_PARTIAL_SUCCESS = 30;
+
+  // Operation in progress, result not yet available.
+  // USAGE: Long-running operations, async processing
+  // HTTP: 202 Accepted
+  STATUS_PENDING = 40;
+
+  // Operation being retried due to transient failure.
+  // USAGE: Resilience patterns, circuit breakers
+  // COMPLIANCE: Required for SLA tracking
+  STATUS_RETRYING = 50;
+
+  // Operation canceled by user or system before completion.
+  // USAGE: Graceful shutdown, user-initiated cancellation
+  // HTTP: 499 Client Closed Request
+  STATUS_CANCELED = 60;
+
+  // Operation exceeded configured timeout threshold.
+  // COMPLIANCE: SLA violation tracking
+  // HTTP: 408 Request Timeout, 504 Gateway Timeout
+  STATUS_TIMEOUT = 70;
+
+  // Operation waiting in queue for execution.
+  // USAGE: Rate limiting, capacity management
+  // HTTP: 202 Accepted
+  STATUS_QUEUED = 80;
+
+  // Execution intentionally deferred per business policy.
+  // USAGE: Scheduled operations, throttling
+  STATUS_DEFERRED = 90;
+
+  // Operation step skipped due to conditional logic.
+  // USAGE: Workflow orchestration, feature flags
+  STATUS_SKIPPED = 100;
+}
+
+// =============================================================================
+// SECTION 2: ERROR CODES (MACHINE-READABLE)
+// =============================================================================
+
+// ErrorCode provides standardized, machine-readable error classification
+// across all services and domains.
+//
+// USAGE GUIDANCE:
+// - Use for programmatic error handling in clients
+// - Map to localized user-facing messages in UI layer
+// - Include in error responses with additional context
+// - Log with telemetry for observability
+//
+// STRUCTURE:
+// - Grouped by domain in ranges of ~200 codes
+// - 10-point spacing within groups for extensibility
+// - Never reuse deprecated codes
+//
+// COMPLIANCE REQUIREMENTS:
+// - GDPR: Errors related to data subject rights (800-999)
+// - PCI DSS: Payment-related errors with security context
+// - SOC 2: All error codes logged for audit trail
+// - ISO 27001: Security incident classification
+//
+// HTTP STATUS MAPPING:
+// - 10-199 (Auth): 401, 403, 423, 429
+// - 200-399 (Validation): 400, 404, 409, 412, 413, 422
+// - 400-599 (Infrastructure): 500, 502, 503, 504
+// - 600-799 (Business): 402, 403, 451
+// - 800-999 (Privacy): 403, 451
+//
+// RELATED ENUMS:
+// - Status: High-level operation outcome
+// - Severity: Error criticality for alerting
+enum ErrorCode {
+  // Default/uninitialized value. Never explicitly return this code.
+  ERROR_CODE_UNSPECIFIED = 0;
+
+  // =============================================================================
+  // AUTHENTICATION & IDENTITY ERRORS (10-199)
+  // Security-related authentication and authorization failures.
+  // COMPLIANCE: ISO 27001 A.9 (Access Control), SOC 2 CC6.1
+  // =============================================================================
+
+  // Provided credentials (username/password) are invalid.
+  // HTTP: 401 Unauthorized
+  // AUDIT: Log failed attempt with IP, timestamp for security monitoring
+  ERROR_CODE_INVALID_CREDENTIALS = 10;
+
+  // User account does not exist in the system.
+  // HTTP: 404 Not Found (or 401 to prevent enumeration)
+  // SECURITY: Consider using generic message to prevent user enumeration
+  ERROR_CODE_USER_NOT_FOUND = 20;
+
+  // User registration failed due to existing account.
+  // HTTP: 409 Conflict
+  ERROR_CODE_USER_ALREADY_EXISTS = 30;
+
+  // Token (JWT, OAuth, API key) is malformed or invalid.
+  // HTTP: 401 Unauthorized
+  // SECURITY: Log token type and expiry for forensics
+  ERROR_CODE_INVALID_TOKEN = 40;
+
+  // Token has exceeded its validity period.
+  // HTTP: 401 Unauthorized
+  // CLIENT ACTION: Refresh token or re-authenticate
+  ERROR_CODE_EXPIRED_TOKEN = 50;
+
+  // Account locked due to too many failed authentication attempts.
+  // HTTP: 423 Locked
+  // COMPLIANCE: Required for SOC 2, ISO 27001 access control
+  // SECURITY: Implement exponential backoff, notify user via email
+  ERROR_CODE_ACCOUNT_LOCKED = 60;
+
+  // Account suspended by administrator or automated policy.
+  // HTTP: 403 Forbidden
+  // AUDIT: Must log suspension reason and administrator identity
+  ERROR_CODE_ACCOUNT_SUSPENDED = 70;
+
+  // Multi-factor authentication challenge required.
+  // HTTP: 403 Forbidden (with MFA challenge in response)
+  // CLIENT ACTION: Prompt user for MFA code
+  ERROR_CODE_MFA_REQUIRED = 80;
+
+  // Provided MFA code is incorrect or expired.
+  // HTTP: 401 Unauthorized
+  // SECURITY: Rate limit MFA attempts to prevent brute force
+  ERROR_CODE_INVALID_MFA_CODE = 90;
+
+  // Password does not meet security policy requirements.
+  // HTTP: 422 Unprocessable Entity
+  // CLIENT ACTION: Display policy requirements (min length, complexity)
+  ERROR_CODE_WEAK_PASSWORD = 100;
+
+  // Request rate limit exceeded for this client/endpoint.
+  // HTTP: 429 Too Many Requests
+  // HEADERS: Include Retry-After header with backoff period
+  // COMPLIANCE: Required for DoS protection (ISO 27001)
+  ERROR_CODE_RATE_LIMIT_EXCEEDED = 110;
+
+  // User lacks required privileges for this operation.
+  // HTTP: 403 Forbidden
+  // AUDIT: Log unauthorized access attempts
+  ERROR_CODE_UNAUTHORIZED = 120;
+
+  // Access explicitly denied by policy or ACL.
+  // HTTP: 403 Forbidden
+  // USAGE: Differentiate from UNAUTHORIZED (permission vs. policy)
+  ERROR_CODE_FORBIDDEN = 130;
+
+  // User session is no longer valid.
+  // HTTP: 401 Unauthorized
+  // CLIENT ACTION: Redirect to login
+  ERROR_CODE_SESSION_EXPIRED = 140;
+
+  // OAuth scope is invalid or not granted.
+  // HTTP: 403 Forbidden
+  // COMPLIANCE: OAuth 2.0 RFC 6749
+  ERROR_CODE_INVALID_SCOPE = 150;
+
+  // User consent required for data access.
+  // HTTP: 403 Forbidden
+  // COMPLIANCE: GDPR Article 6 (lawful basis for processing)
+  ERROR_CODE_CONSENT_REQUIRED = 160;
+
+  // External identity provider (SSO, SAML) failure.
+  // HTTP: 502 Bad Gateway
+  // MONITORING: Alert on repeated failures
+  ERROR_CODE_IDENTITY_PROVIDER_ERROR = 170;
+
+  // Biometric authentication (fingerprint, face) failed.
+  // HTTP: 401 Unauthorized
+  ERROR_CODE_BIOMETRIC_FAILURE = 180;
+
+  // Request originates from untrusted device.
+  // HTTP: 403 Forbidden
+  // SECURITY: Implement device fingerprinting and trust list
+  ERROR_CODE_DEVICE_NOT_TRUSTED = 190;
+
+  // =============================================================================
+  // DATA VALIDATION & REQUEST ERRORS (200-399)
+  // Client-side validation failures and request malformation.
+  // COMPLIANCE: Input validation required for SOC 2, ISO 27001 A.14
+  // =============================================================================
+
+  // Request parameter is invalid or malformed.
+  // HTTP: 400 Bad Request
+  // CLIENT ACTION: Fix parameter and retry
+  ERROR_CODE_INVALID_ARGUMENT = 200;
+
+  // Required field is missing from request.
+  // HTTP: 400 Bad Request
+  // RESPONSE: Include list of missing fields
+  ERROR_CODE_MISSING_REQUIRED_FIELD = 210;
+
+  // Operation conflicts with current resource state.
+  // HTTP: 409 Conflict
+  // EXAMPLE: Concurrent modification, duplicate operation
+  ERROR_CODE_CONFLICT = 220;
+
+  // Requested resource does not exist.
+  // HTTP: 404 Not Found
+  ERROR_CODE_NOT_FOUND = 230;
+
+  // Precondition failed (stale version, ETag mismatch).
+  // HTTP: 412 Precondition Failed
+  // USAGE: Optimistic locking, version control
+  // CLIENT ACTION: Fetch latest version and retry
+  ERROR_CODE_PRECONDITION_FAILED = 240;
+
+  // Request payload exceeds allowed size limit.
+  // HTTP: 413 Payload Too Large
+  // RESPONSE: Include max allowed size
+  // COMPLIANCE: DoS protection requirement
+  ERROR_CODE_PAYLOAD_TOO_LARGE = 250;
+
+  // Requested operation not supported by this resource/version.
+  // HTTP: 405 Method Not Allowed
+  ERROR_CODE_UNSUPPORTED_OPERATION = 260;
+
+  // Downstream dependency failed or unavailable.
+  // HTTP: 424 Failed Dependency
+  // MONITORING: Alert on cascading failures
+  ERROR_CODE_DEPENDENCY_FAILURE = 270;
+
+  // Duplicate entry violates unique constraint.
+  // HTTP: 409 Conflict
+  // DATABASE: Unique key, primary key violation
+  ERROR_CODE_DUPLICATE_ENTRY = 280;
+
+  // Resource is in invalid state for requested operation.
+  // HTTP: 422 Unprocessable Entity
+  // EXAMPLE: Cannot delete published content, must unpublish first
+  ERROR_CODE_INVALID_STATE = 290;
+
+  // Value is outside acceptable range.
+  // HTTP: 400 Bad Request
+  // RESPONSE: Include valid range bounds
+  ERROR_CODE_OUT_OF_RANGE = 300;
+
+  // Request syntax is malformed (e.g., invalid JSON, protobuf).
+  // HTTP: 400 Bad Request
+  ERROR_CODE_MALFORMED_REQUEST = 310;
+
+  // Content-Type header not supported by endpoint.
+  // HTTP: 415 Unsupported Media Type
+  // RESPONSE: Include list of supported types
+  ERROR_CODE_UNSUPPORTED_MEDIA_TYPE = 320;
+
+  // Data integrity check failed (checksum, hash mismatch).
+  // HTTP: 422 Unprocessable Entity
+  // USAGE: File uploads, data transmission
+  // SECURITY: May indicate corruption or tampering
+  ERROR_CODE_CHECKSUM_MISMATCH = 330;
+
+  // Data violates schema definition or constraints.
+  // HTTP: 422 Unprocessable Entity
+  // USAGE: JSON Schema, OpenAPI validation
+  ERROR_CODE_SCHEMA_VIOLATION = 340;
+
+  // Circular reference detected in data structure.
+  // HTTP: 422 Unprocessable Entity
+  // EXAMPLE: Parent-child relationships, dependency graphs
+  ERROR_CODE_CIRCULAR_DEPENDENCY = 350;
+
+  // Query filter expression is malformed or invalid.
+  // HTTP: 400 Bad Request
+  // RESPONSE: Include filter syntax documentation
+  ERROR_CODE_INVALID_FILTER = 360;
+
+  // Sort parameter is invalid or unsupported.
+  // HTTP: 400 Bad Request
+  // RESPONSE: Include list of sortable fields
+  ERROR_CODE_INVALID_SORT = 370;
+
+  // Batch request size exceeds limit.
+  // HTTP: 400 Bad Request
+  // RESPONSE: Include max batch size
+  ERROR_CODE_TOO_MANY_REQUESTS = 380;
+
+  // Resource with same identifier already exists.
+  // HTTP: 409 Conflict
+  ERROR_CODE_ALREADY_EXISTS = 390;
+
+  // =============================================================================
+  // INFRASTRUCTURE & PLATFORM ERRORS (400-599)
+  // Server-side, system-level, and infrastructure failures.
+  // COMPLIANCE: Required for incident response (SOC 2 CC7.3)
+  // =============================================================================
+
+  // Unexpected internal server error occurred.
+  // HTTP: 500 Internal Server Error
+  // MONITORING: Generate incident alert
+  // AUDIT: Log full stack trace for debugging
+  // SECURITY: Never expose internal details to clients
+  ERROR_CODE_INTERNAL_ERROR = 400;
+
+  // Backend dependency temporarily unavailable.
+  // HTTP: 503 Service Unavailable
+  // HEADERS: Include Retry-After
+  // MONITORING: Check cascading failures
+  ERROR_CODE_BACKEND_UNAVAILABLE = 410;
+
+  // Operation exceeded configured timeout.
+  // HTTP: 504 Gateway Timeout
+  // COMPLIANCE: SLA tracking required
+  ERROR_CODE_TIMEOUT = 420;
+
+  // Database or object storage system failure.
+  // HTTP: 500 Internal Server Error
+  // MONITORING: Critical alert, check replication
+  // COMPLIANCE: May trigger data integrity review
+  ERROR_CODE_STORAGE_ERROR = 430;
+
+  // Network communication failure.
+  // HTTP: 500 Internal Server Error
+  // MONITORING: Check network partitions, DNS
+  ERROR_CODE_NETWORK_ERROR = 440;
+
+  // System misconfiguration detected.
+  // HTTP: 500 Internal Server Error
+  // SECURITY: May indicate unauthorized changes
+  // INCIDENT: Requires root cause analysis
+  ERROR_CODE_CONFIG_ERROR = 450;
+
+  // Encryption/decryption or key management failure.
+  // HTTP: 500 Internal Server Error
+  // SECURITY: Critical security incident
+  // COMPLIANCE: May trigger breach notification
+  // AUDIT: Log key identifier, operation type
+  ERROR_CODE_ENCRYPTION_ERROR = 460;
+
+  // File system or I/O operation failed.
+  // HTTP: 500 Internal Server Error
+  // MONITORING: Check disk space, permissions
+  ERROR_CODE_IO_ERROR = 470;
+
+  // Expected cache entry not found (informational).
+  // HTTP: N/A (internal only)
+  // USAGE: Cache warming, performance optimization
+  ERROR_CODE_CACHE_MISS = 480;
+
+  // Feature is administratively disabled or behind feature flag.
+  // HTTP: 403 Forbidden
+  // RESPONSE: Include feature name and re-enable instructions
+  ERROR_CODE_FEATURE_DISABLED = 490;
+
+  // Operation not permitted by current license terms.
+  // HTTP: 402 Payment Required
+  // RESPONSE: Include upgrade path information
+  ERROR_CODE_LICENSE_VIOLATION = 500;
+
+  // Database connection could not be established.
+  // HTTP: 503 Service Unavailable
+  // MONITORING: Critical infrastructure alert
+  // SLA: Typically triggers immediate escalation
+  ERROR_CODE_DATABASE_CONNECTION_FAILED = 510;
+
+  // Message queue (Kafka, RabbitMQ) operation failed.
+  // HTTP: 500 Internal Server Error
+  // MONITORING: Check broker health, topic configuration
+  ERROR_CODE_MESSAGE_QUEUE_ERROR = 520;
+
+  // Distributed lock acquisition failed or timed out.
+  // HTTP: 409 Conflict or 503 Service Unavailable
+  // USAGE: Consensus algorithms, leader election
+  ERROR_CODE_DISTRIBUTED_LOCK_FAILED = 530;
+
+  // Circuit breaker open, preventing calls to failing service.
+  // HTTP: 503 Service Unavailable
+  // HEADERS: Include Retry-After
+  // PATTERN: Resilience, fail-fast
+  ERROR_CODE_CIRCUIT_BREAKER_OPEN = 540;
+
+  // Service operating in degraded mode with reduced capacity.
+  // HTTP: 200 OK (with warning header)
+  // MONITORING: Monitor recovery progress
+  // COMPLIANCE: May affect SLA commitments
+  ERROR_CODE_SERVICE_DEGRADED = 550;
+
+  // System in maintenance mode, unavailable for operations.
+  // HTTP: 503 Service Unavailable
+  // HEADERS: Retry-After with maintenance window end time
+  // COMMUNICATION: Notify users in advance per SLA
+  ERROR_CODE_MAINTENANCE_MODE = 560;
+
+  // Database replication lag exceeds acceptable threshold.
+  // HTTP: 503 Service Unavailable (for read-after-write)
+  // MONITORING: Track replication lag metrics
+  // USAGE: Multi-region deployments, read replicas
+  ERROR_CODE_REPLICATION_LAG = 570;
+
+  // Backup operation failed.
+  // HTTP: 500 Internal Server Error
+  // COMPLIANCE: Critical for disaster recovery (SOC 2, ISO 27001)
+  // INCIDENT: Requires immediate investigation
+  ERROR_CODE_BACKUP_FAILED = 580;
+
+  // Database schema migration failed.
+  // HTTP: 500 Internal Server Error
+  // DEPLOYMENT: Triggers rollback procedures
+  // MONITORING: Critical deployment alert
+  ERROR_CODE_MIGRATION_FAILED = 590;
+
+  // =============================================================================
+  // BUSINESS LOGIC & WORKFLOW ERRORS (600-799)
+  // Domain-specific business rule violations and workflow constraints.
+  // COMPLIANCE: Business logic validation (SOC 2 CC6.6)
+  // =============================================================================
+
+  // Payment or subscription required to access resource.
+  // HTTP: 402 Payment Required
+  // RESPONSE: Include pricing information and purchase URLs
+  // USAGE: Freemium models, pay-per-use APIs
+  ERROR_CODE_PAYMENT_REQUIRED = 600;
+
+  // Operation violates organizational or compliance policy.
+  // HTTP: 403 Forbidden
+  // AUDIT: Log policy name and violation details
+  // COMPLIANCE: Required for policy enforcement tracking
+  ERROR_CODE_POLICY_VIOLATION = 610;
+
+  // Resource quota or limit exceeded.
+  // HTTP: 429 Too Many Requests
+  // RESPONSE: Include current usage, limit, and reset time
+  // USAGE: API rate limits, storage quotas, user limits
+  ERROR_CODE_QUOTA_EXCEEDED = 620;
+
+  // Concurrent workflow already in progress.
+  // HTTP: 409 Conflict
+  // USAGE: Prevent duplicate long-running operations
+  ERROR_CODE_WORKFLOW_CONFLICT = 630;
+
+  // Operation requires approval from higher authority.
+  // HTTP: 403 Forbidden
+  // RESPONSE: Include approval process details
+  // COMPLIANCE: Required for segregation of duties (SOC 2)
+  ERROR_CODE_APPROVAL_REQUIRED = 640;
+
+  // Required dependency or prerequisite not satisfied.
+  // HTTP: 424 Failed Dependency
+  // EXAMPLE: Missing configuration, incomplete setup
+  ERROR_CODE_DEPENDENCY_UNSATISFIED = 650;
+
+  // Operation not supported for this resource type or tier.
+  // HTTP: 405 Method Not Allowed
+  // USAGE: Feature availability by subscription tier
+  ERROR_CODE_OPERATION_NOT_SUPPORTED = 660;
+
+  // External partner or integration system failure.
+  // HTTP: 502 Bad Gateway
+  // MONITORING: Alert on partner SLA violations
+  // ESCALATION: May require vendor engagement
+  ERROR_CODE_EXTERNAL_SYSTEM_FAILURE = 670;
+
+  // Account balance insufficient for transaction.
+  // HTTP: 402 Payment Required
+  // COMPLIANCE: PCI DSS for payment systems
+  // RESPONSE: Include current balance and required amount
+  ERROR_CODE_INSUFFICIENT_BALANCE = 680;
+
+  // Payment transaction declined by processor or bank.
+  // HTTP: 402 Payment Required
+  // COMPLIANCE: PCI DSS, payment card regulations
+  // RESPONSE: Include decline reason if available
+  // AUDIT: Log attempt without exposing card details
+  ERROR_CODE_TRANSACTION_DECLINED = 690;
+
+  // User subscription has expired or is inactive.
+  // HTTP: 402 Payment Required
+  // RESPONSE: Include renewal instructions
+  ERROR_CODE_SUBSCRIPTION_EXPIRED = 700;
+
+  // Trial period has ended, upgrade required.
+  // HTTP: 402 Payment Required
+  // RESPONSE: Include upgrade options and pricing
+  ERROR_CODE_TRIAL_EXPIRED = 710;
+
+  // Request originates from geographically restricted region.
+  // HTTP: 451 Unavailable For Legal Reasons
+  // COMPLIANCE: Export controls, sanctions (OFAC)
+  // AUDIT: Log attempt with geolocation data
+  ERROR_CODE_GEOFENCING_VIOLATION = 720;
+
+  // Operation violates regulatory compliance requirement.
+  // HTTP: 403 Forbidden
+  // COMPLIANCE: GDPR, HIPAA, SOX, etc.
+  // AUDIT: Mandatory logging with compliance framework reference
+  // INCIDENT: May require regulatory notification
+  ERROR_CODE_COMPLIANCE_VIOLATION = 730;
+
+  // Service level agreement threshold breached.
+  // HTTP: 503 Service Unavailable
+  // MONITORING: Escalate to SRE team
+  // BUSINESS: May trigger SLA credits or penalties
+  ERROR_CODE_SLA_VIOLATION = 740;
+
+  // System at maximum capacity, cannot accept request.
+  // HTTP: 503 Service Unavailable
+  // HEADERS: Retry-After
+  // MONITORING: Trigger auto-scaling if configured
+  ERROR_CODE_CAPACITY_EXCEEDED = 750;
+
+  // Entity (user, IP, domain) is on security blacklist.
+  // HTTP: 403 Forbidden
+  // SECURITY: Log blacklist category and reason
+  // USAGE: Fraud prevention, abuse mitigation
+  ERROR_CODE_BLACKLIST_VIOLATION = 760;
+
+  // User fails age verification requirement.
+  // HTTP: 403 Forbidden
+  // COMPLIANCE: COPPA (children under 13), age-restricted content
+  // PRIVACY: Minimize data collection for age verification
+  ERROR_CODE_AGE_RESTRICTION = 770;
+
+  // Content not available in user's geographic region.
+  // HTTP: 451 Unavailable For Legal Reasons
+  // USAGE: Geo-restricted content, licensing agreements
+  ERROR_CODE_TERRITORY_RESTRICTION = 780;
+
+  // Operation violates contractual terms.
+  // HTTP: 403 Forbidden
+  // LEGAL: Log contract reference and violation type
+  // USAGE: Partner agreements, service terms
+  ERROR_CODE_CONTRACT_VIOLATION = 790;
+
+  // =============================================================================
+  // DATA PROTECTION & PRIVACY ERRORS (800-999)
+  // Privacy regulations, data protection, and compliance failures.
+  // COMPLIANCE: GDPR, CCPA, HIPAA, data protection regulations
+  // CRITICALITY: Many require mandatory breach notification
+  // =============================================================================
+
+  // Data retention period violation (too long or premature deletion).
+  // HTTP: 403 Forbidden
+  // COMPLIANCE: GDPR Article 5(1)(e), industry-specific retention rules
+  // AUDIT: Log data type, retention policy, and violation details
+  ERROR_CODE_DATA_RETENTION_VIOLATION = 800;
+
+  // Access to Personally Identifiable Information denied.
+  // HTTP: 403 Forbidden
+  // COMPLIANCE: GDPR Article 32, data minimization
+  // AUDIT: Log access attempt, user role, data classification
+  // SECURITY: High-priority security event
+  ERROR_CODE_PII_ACCESS_DENIED = 810;
+
+  // Operation violates GDPR requirement.
+  // HTTP: 403 Forbidden
+  // COMPLIANCE: General Data Protection Regulation (EU)
+  // INCIDENT: May require Data Protection Officer notification
+  // AUDIT: Include GDPR article reference
+  // LEGAL: Potential regulatory fines
+  ERROR_CODE_GDPR_VIOLATION = 820;
+
+  // Operation violates CCPA requirement.
+  // HTTP: 403 Forbidden
+  // COMPLIANCE: California Consumer Privacy Act
+  // INCIDENT: Document violation for regulatory reporting
+  // AUDIT: Include CCPA section reference
+  ERROR_CODE_CCPA_VIOLATION = 830;
+
+  // Data residency requirement violated (data in wrong region).
+  // HTTP: 403 Forbidden
+  // COMPLIANCE: Data sovereignty laws (Russia, China, EU)
+  // INCIDENT: Critical violation requiring immediate remediation
+  // TECHNICAL: Check data center assignment, routing
+  ERROR_CODE_DATA_RESIDENCY_VIOLATION = 840;
+
+  // Data anonymization or pseudonymization process failed.
+  // HTTP: 500 Internal Server Error
+  // COMPLIANCE: GDPR Article 25, privacy by design
+  // INCIDENT: May block data processing until resolved
+  // SECURITY: Risk of re-identification
+  ERROR_CODE_ANONYMIZATION_FAILED = 850;
+
+  // Data encryption required but not applied.
+  // HTTP: 500 Internal Server Error
+  // COMPLIANCE: GDPR Article 32, HIPAA Security Rule
+  // SECURITY: Critical security incident
+  // INCIDENT: Immediate encryption required
+  ERROR_CODE_ENCRYPTION_REQUIRED = 860;
+
+  // Audit log recording failed (critical compliance failure).
+  // HTTP: 500 Internal Server Error
+  // COMPLIANCE: SOC 2, ISO 27001, HIPAA, PCI DSS
+  // INCIDENT: System must halt operations until logging restored
+  // MONITORING: Critical alert to security team
+  ERROR_CODE_AUDIT_LOG_FAILURE = 870;
+
+  // GDPR Right to Erasure ("right to be forgotten") request.
+  // HTTP: 202 Accepted (async processing)
+  // COMPLIANCE: GDPR Article 17
+  // TIMELINE: Must complete within 30 days
+  // SCOPE: Includes backups, analytics, third-party systems
+  ERROR_CODE_RIGHT_TO_ERASURE = 880;
+
+  // Data subject access request under privacy laws.
+  // HTTP: 202 Accepted (async processing)
+  // COMPLIANCE: GDPR Article 15, CCPA Section 1798.110
+  // TIMELINE: 30-45 days depending on jurisdiction
+  // RESPONSE: Comprehensive data export in portable format
+  ERROR_CODE_DATA_SUBJECT_REQUEST = 890;
+
+  // User has withdrawn consent for data processing.
+  // HTTP: 403 Forbidden
+  // COMPLIANCE: GDPR Article 7(3)
+  // ACTION: Cease processing immediately
+  // AUDIT: Log withdrawal timestamp and scope
+  ERROR_CODE_CONSENT_WITHDRAWN = 900;
+
+  // Data use violates stated purpose or consent scope.
+  // HTTP: 403 Forbidden
+  // COMPLIANCE: GDPR Article 5(1)(b) - purpose limitation
+  // INCIDENT: Requires privacy impact assessment
+  // AUDIT: Document intended vs. actual purpose
+  ERROR_CODE_PURPOSE_LIMITATION = 910;
+
+  // Cross-border data transfer violates regulations.
+  // HTTP: 403 Forbidden
+  // COMPLIANCE: GDPR Chapter V, Standard Contractual Clauses
+  // LEGAL: Requires adequate safeguards or approved mechanism
+  // GEOGRAPHY: Check source/destination country adequacy decision
+  ERROR_CODE_CROSS_BORDER_TRANSFER = 920;
+
+  // Potential data breach detected by monitoring systems.
+  // HTTP: 500 Internal Server Error
+  // COMPLIANCE: GDPR Article 33 (72-hour notification to DPA)
+  // INCIDENT: Activate incident response plan immediately
+  // NOTIFICATION: May require notifying affected individuals
+  // SECURITY: Critical security event requiring forensics
+  ERROR_CODE_DATA_BREACH_DETECTED = 930;
+
+  // Risk of sensitive data exposure detected.
+  // HTTP: 500 Internal Server Error
+  // COMPLIANCE: Preventive control for breach avoidance
+  // SECURITY: High-priority alert to security operations
+  // ACTION: Immediate remediation required
+  // AUDIT: Log exposure vector and affected data classification
+  ERROR_CODE_SENSITIVE_DATA_EXPOSURE = 940;
+}
+
+// =============================================================================
+// SECTION 3: SEVERITY & LOGGING
+// =============================================================================
+
+// Severity indicates the criticality of a log entry, event, or alert.
+//
+// USAGE GUIDANCE:
+// - Use for log filtering and routing
+// - Map to alerting thresholds
+// - Include in audit records
+// - Drive incident escalation policies
+//
+// STANDARDS COMPLIANCE:
+// - RFC 5424 (Syslog Protocol) - aligned with standard severity levels
+// - ISO 27001 A.12.4 (Logging and Monitoring)
+// - SOC 2 CC7.2 (System Monitoring)
+//
+// ALERTING GUIDELINES:
+// - DEBUG/INFO: No alerts
+// - NOTICE: Informational notifications
+// - WARNING: Monitor trends, may alert on patterns
+// - ERROR: Alert to on-call engineers
+// - CRITICAL: Immediate notification, page on-call
+// - ALERT: Executive escalation, multiple team notification
+// - EMERGENCY: All-hands incident, major outage
+//
+// RELATED ENUMS:
+// - Status: Operation outcome
+// - ErrorCode: Specific error classification
+enum Severity {
+  // Default/uninitialized. Never explicitly set in production logs.
+  SEVERITY_UNSPECIFIED = 0;
+
+  // Debug-level messages for development and troubleshooting.
+  // USAGE: Verbose logging, variable states, execution flow
+  // PRODUCTION: Typically disabled or sampled
+  // STORAGE: Short retention (7-14 days)
+  SEVERITY_DEBUG = 10;
+
+  // Informational messages about normal operations.
+  // USAGE: Startup messages, configuration, routine operations
+  // ALERTING: No alerts
+  // EXAMPLES: "Service started", "Configuration loaded"
+  SEVERITY_INFO = 20;
+
+  // Normal but significant events.
+  // USAGE: Milestone events, state changes
+  // ALERTING: Dashboard metrics, trend analysis
+  // EXAMPLES: "User logged in", "Payment processed"
+  SEVERITY_NOTICE = 30;
+
+  // Warning conditions that may require attention.
+  // USAGE: Degraded performance, resource pressure, deprecated API usage
+  // ALERTING: Monitor for patterns, aggregate alerts
+  // EXAMPLES: "Cache miss rate high", "Deprecated API called"
+  // ACTION: Review during business hours
+  SEVERITY_WARNING = 40;
+
+  // Error conditions that affect functionality.
+  // USAGE: Failed operations, caught exceptions, validation errors
+  // ALERTING: Notify on-call engineer
+  // EXAMPLES: "Database query failed", "External API timeout"
+  // ACTION: Investigate within SLA timeframe
+  // COMPLIANCE: Required for incident tracking
+  SEVERITY_ERROR = 50;
+
+  // Critical conditions requiring immediate attention.
+  // USAGE: System component failures, data corruption, security events
+  // ALERTING: Page on-call engineer immediately
+  // EXAMPLES: "Database unavailable", "Encryption failure"
+  // ACTION: Immediate investigation required
+  // ESCALATION: Manager notification after 30 minutes
+  SEVERITY_CRITICAL = 60;
+
+  // Action must be taken immediately to prevent outage.
+  // USAGE: Imminent failures, cascading errors, breach detection
+  // ALERTING: Multiple team notification, executive alert
+  // EXAMPLES: "Disk space critical", "Security breach detected"
+  // ACTION: Drop everything and respond
+  // ESCALATION: Executive notification, war room activation
+  SEVERITY_ALERT = 70;
+
+  // System is unusable, total service outage.
+  // USAGE: Complete system failure, data center outage
+  // ALERTING: All-hands notification, customer communication
+  // EXAMPLES: "Complete service outage", "Data center down"
+  // ACTION: Activate disaster recovery procedures
+  // ESCALATION: C-level notification, public status page update
+  // COMPLIANCE: Major incident report required
+  SEVERITY_EMERGENCY = 80;
+}
+
+// =============================================================================
+// SECTION 4: RESOURCE LIFECYCLE MANAGEMENT
+// =============================================================================
+
+// LifecycleState represents the current state of a resource in its lifecycle.
+//
+// USAGE GUIDANCE:
+// - Track resource state transitions
+// - Enforce state-based access control
+// - Implement soft delete patterns
+// - Support compliance data retention
+//
+// STATE TRANSITION RULES:
+// - CREATING -> ACTIVE (success) or ERROR (failure)
+// - ACTIVE -> UPDATING -> ACTIVE (success) or ERROR (failure)
+// - ACTIVE -> SUSPENDED -> ACTIVE (resume)
+// - ACTIVE -> DISABLED (admin action)
+// - ACTIVE -> DELETING -> DELETED -> ARCHIVED -> purged
+// - PENDING_APPROVAL -> ACTIVE (approved) or DELETED (rejected)
+//
+// COMPLIANCE REQUIREMENTS:
+// - GDPR: ARCHIVED state for retention period compliance
+// - SOC 2: Audit trail of all state transitions
+// - ISO 27001: Secure deletion and archival processes
+//
+// RELATED ENUMS:
+// - Status: Operation outcome
+// - AuditAction: Actions triggering state changes
+enum LifecycleState {
+  // Default/uninitialized state. Should never be persisted.
+  LIFECYCLE_STATE_UNSPECIFIED = 0;
+
+  // Resource is being provisioned or created.
+  // TRANSITIONS: -> ACTIVE (success), -> ERROR (failure)
+  // OPERATIONS: Read-only, creation in progress
+  // DURATION: Should be transient (seconds to minutes)
+  LIFECYCLE_STATE_CREATING = 10;
+
+  // Resource is active and fully operational.
+  // TRANSITIONS: -> UPDATING, -> SUSPENDED, -> DISABLED, -> DELETING
+  // OPERATIONS: All CRUD operations allowed
+  // COMPLIANCE: Normal data processing permitted
+  LIFECYCLE_STATE_ACTIVE = 20;
+
+  // Resource is being modified or updated.
+  // TRANSITIONS: -> ACTIVE (success), -> ERROR (failure)
+  // OPERATIONS: Read-only during update
+  // USAGE: In-place updates, configuration changes
+  LIFECYCLE_STATE_UPDATING = 30;
+
+  // Resource temporarily suspended (reversible).
+  // TRANSITIONS: -> ACTIVE (resume), -> DELETED (permanent removal)
+  // OPERATIONS: Read-only, no modifications
+  // USAGE: Payment failures, policy violations, security holds
+  // COMPLIANCE: May require user notification
+  LIFECYCLE_STATE_SUSPENDED = 40;
+
+  // Resource administratively disabled (manual action required).
+  // TRANSITIONS: -> ACTIVE (admin re-enable), -> DELETED
+  // OPERATIONS: Read-only for admins
+  // AUDIT: Log admin identity and reason
+  // USAGE: Compliance violations, security incidents
+  LIFECYCLE_STATE_DISABLED = 50;
+
+  // Soft delete in progress (async deletion).
+  // TRANSITIONS: -> DELETED (completion)
+  // OPERATIONS: No operations allowed
+  // USAGE: Cleanup of dependencies, cascade deletes
+  // DURATION: Grace period for recovery (7-30 days typical)
+  LIFECYCLE_STATE_DELETING = 60;
+
+  // Soft deleted, recoverable within retention period.
+  // TRANSITIONS: -> ACTIVE (restore), -> ARCHIVED (retention)
+  // OPERATIONS: Admin restore only
+  // COMPLIANCE: GDPR Article 17 grace period
+  // RETENTION: 30-90 days before archival
+  LIFECYCLE_STATE_DELETED = 70;
+
+  // Archived for compliance retention (read-only).
+  // TRANSITIONS: -> purged (after retention expires)
+  // OPERATIONS: Read-only for compliance/legal
+  // COMPLIANCE: GDPR Article 5(1)(e), industry-specific retention
+  // RETENTION: Years (finance: 7 years, healthcare: varies)
+  // STORAGE: Cold storage for cost optimization
+  LIFECYCLE_STATE_ARCHIVED = 80;
+
+  // Resource in error state due to system failure.
+  // TRANSITIONS: -> ACTIVE (manual recovery), -> DELETED (give up)
+  // OPERATIONS: Read-only, troubleshooting
+  // MONITORING: Alert to operations team
+  // ACTION: Investigate and remediate
+  LIFECYCLE_STATE_ERROR = 90;
+
+  // Resource awaiting approval before activation.
+  // TRANSITIONS: -> ACTIVE (approved), -> DELETED (rejected)
+  // OPERATIONS: Read-only pending review
+  // COMPLIANCE: Segregation of duties (SOC 2)
+  // USAGE: High-value changes, privileged access requests
+  // AUDIT: Log approver identity and decision
+  LIFECYCLE_STATE_PENDING_APPROVAL = 100;
+
+  // Resource being migrated to new system/region.
+  // TRANSITIONS: -> ACTIVE (success), -> ERROR (failure)
+  // OPERATIONS: Read-only during migration
+  // USAGE: Data center migrations, version upgrades
+  // MONITORING: Track migration progress
+  LIFECYCLE_STATE_MIGRATING = 110;
+
+  // Resource marked for deprecation (warning state).
+  // TRANSITIONS: -> DISABLED (deprecation complete), -> ACTIVE (un-deprecate)
+  // OPERATIONS: All operations with deprecation warnings
+  // COMMUNICATION: Notify users with migration timeline
+  // TIMELINE: Typically 6-12 months notice before removal
+  LIFECYCLE_STATE_DEPRECATED = 120;
+}
+
+// =============================================================================
+// SECTION 5: AUDIT & COMPLIANCE ACTIONS
+// =============================================================================
+
+// AuditAction represents actions that must be logged for security,
+// compliance, and regulatory requirements.
+//
+// USAGE GUIDANCE:
+// - Log ALL occurrences of these actions
+// - Include actor identity, timestamp, IP, resource
+// - Immutable audit logs (append-only)
+// - Tamper-evident logging (checksums, blockchain)
+//
+// COMPLIANCE REQUIREMENTS:
+// - SOC 2: Comprehensive audit trail (CC6.2, CC6.3, CC7.2)
+// - ISO 27001: Security event logging (A.12.4)
+// - GDPR: Data processing activities (Article 30)
+// - HIPAA: PHI access logging (§164.308(a)(1)(ii)(D))
+// - PCI DSS: Cardholder data access tracking (Requirement 10)
+//
+// RETENTION REQUIREMENTS:
+// - Minimum: 90 days (SOC 2)
+// - Typical: 1 year (ISO 27001)
+// - Financial: 7 years (SOX, industry standards)
+// - Healthcare: 6 years (HIPAA)
+//
+// LOG ATTRIBUTES:
+// Always include: timestamp, actor_id, actor_ip, resource_id,
+// resource_type, action, outcome (success/failure), session_id
+//
+// RELATED ENUMS:
+// - Severity: For alert prioritization
+// - LifecycleState: Resource state changes
+enum AuditAction {
+  // Default/uninitialized. Should never appear in audit logs.
+  AUDIT_ACTION_UNSPECIFIED = 0;
+
+  // User successfully authenticated.
+  // COMPLIANCE: Required by SOC 2, ISO 27001, PCI DSS
+  // LOG: Include auth method, MFA status, device fingerprint
+  // ALERT: Unusual location, time, or velocity
+  AUDIT_ACTION_LOGIN = 10;
+
+  // User logged out or session terminated.
+  // COMPLIANCE: SOC 2, session management tracking
+  // LOG: Include session duration
+  AUDIT_ACTION_LOGOUT = 20;
+
+  // Resource created.
+  // COMPLIANCE: Change management (SOC 2)
+  // LOG: Include resource type, attributes, creator
+  AUDIT_ACTION_CREATE = 30;
+
+  // Resource modified or updated.
+  // COMPLIANCE: Change tracking (SOC 2, ISO 27001)
+  // LOG: Include before/after state (delta), modifier
+  // USAGE: Configuration changes, data updates
+  AUDIT_ACTION_UPDATE = 40;
+
+  // Resource deleted (soft or hard delete).
+  // COMPLIANCE: Critical audit event (all frameworks)
+  // LOG: Include deletion type (soft/hard), reason, full state
+  // ALERT: Bulk deletions, privileged resource deletion
+  AUDIT_ACTION_DELETE = 50;
+
+  // Resource or feature enabled.
+  // COMPLIANCE: Access control changes (SOC 2 CC6.2)
+  // LOG: Include enabler identity, reason
+  AUDIT_ACTION_ENABLE = 60;
+
+  // Resource or feature disabled.
+  // COMPLIANCE: Access control changes (SOC 2 CC6.2)
+  // LOG: Include disabler identity, reason, impact scope
+  AUDIT_ACTION_DISABLE = 70;
+
+  // Permission or role assigned to user.
+  // COMPLIANCE: Critical for RBAC audit (SOC 2, ISO 27001)
+  // LOG: Include assigner, assignee, permission/role, scope
+  // ALERT: Admin role assignments
+  AUDIT_ACTION_ASSIGN = 80;
+
+  // Permission or role revoked from user.
+  // COMPLIANCE: Access revocation tracking (SOC 2)
+  // LOG: Include revoker, subject, permission/role, reason
+  AUDIT_ACTION_REVOKE = 90;
+
+  // Data exported from system.
+  // COMPLIANCE: Critical for GDPR, HIPAA, PCI DSS
+  // LOG: Include data classification, volume, format, destination
+  // ALERT: Large exports, sensitive data exports
+  // SECURITY: Monitor for data exfiltration
+  AUDIT_ACTION_EXPORT = 100;
+
+  // Data imported into system.
+  // COMPLIANCE: Data quality, provenance tracking
+  // LOG: Include source, data type, volume, validator
+  // SECURITY: Validate and scan imports
+  AUDIT_ACTION_IMPORT = 110;
+
+  // Request or change approved.
+  // COMPLIANCE: Segregation of duties (SOC 2 CC6.6)
+  // LOG: Include approver, request details, approval criteria
+  AUDIT_ACTION_APPROVE = 120;
+
+  // Request or change rejected.
+  // COMPLIANCE: Change management (SOC 2)
+  // LOG: Include rejector, reason for rejection
+  AUDIT_ACTION_REJECT = 130;
+
+  // User password reset.
+  // COMPLIANCE: Critical security event (all frameworks)
+  // LOG: Include reset method (email, SMS, admin), requestor
+  // ALERT: Frequent resets, admin-initiated resets
+  // SECURITY: Monitor for account takeover attempts
+  AUDIT_ACTION_RESET_PASSWORD = 140;
+
+  // Email address verified.
+  // COMPLIANCE: Identity verification tracking
+  // LOG: Include verification method, timestamp
+  AUDIT_ACTION_VERIFY_EMAIL = 150;
+
+  // Phone number verified.
+  // COMPLIANCE: Identity verification tracking
+  // LOG: Include verification method (SMS, call), timestamp
+  AUDIT_ACTION_VERIFY_PHONE = 160;
+
+  // User privilege elevated (sudo, assume role).
+  // COMPLIANCE: Critical security event (SOC 2, ISO 27001)
+  // LOG: Include source role, target role, reason, approver
+  // ALERT: All privilege elevations should alert
+  // SECURITY: Time-limited elevation recommended
+  AUDIT_ACTION_ELEVATE_PRIVILEGE = 170;
+
+  // Sensitive data accessed (PII, PHI, PCI).
+  // COMPLIANCE: MANDATORY for GDPR, HIPAA, PCI DSS
+  // LOG: Include data classification, access purpose, user role
+  // RETENTION: Extended retention (6-7 years)
+  // ALERT: Unusual access patterns, bulk access
+  AUDIT_ACTION_ACCESS_SENSITIVE_DATA = 180;
+
+  // File or data downloaded.
+  // COMPLIANCE: Data exfiltration monitoring
+  // LOG: Include file type, size, classification
+  // SECURITY: Monitor for unusual download volumes
+  AUDIT_ACTION_DOWNLOAD = 190;
+
+  // File or data uploaded.
+  // COMPLIANCE: Data intake monitoring
+  // LOG: Include file type, size, scan results
+  // SECURITY: Malware scanning required
+  AUDIT_ACTION_UPLOAD = 200;
+
+  // Resource shared with other users/systems.
+  // COMPLIANCE: Data sharing tracking (GDPR Article 28)
+  // LOG: Include recipient(s), permission level, expiry
+  AUDIT_ACTION_SHARE = 210;
+
+  // Resource sharing revoked.
+  // COMPLIANCE: Access revocation (SOC 2)
+  // LOG: Include previous recipients, reason
+  AUDIT_ACTION_UNSHARE = 220;
+
+  // Resource moved to archive.
+  // COMPLIANCE: Retention policy enforcement
+  // LOG: Include reason, retention period, location
+  AUDIT_ACTION_ARCHIVE = 230;
+
+  // Archived resource restored to active state.
+  // COMPLIANCE: Data recovery tracking
+  // LOG: Include restorer, reason, source archive
+  AUDIT_ACTION_RESTORE = 240;
+
+  // Resource permanently deleted (unrecoverable).
+  // COMPLIANCE: Critical audit event (GDPR Right to Erasure)
+  // LOG: Include full resource state, reason, approver
+  // ALERT: All purge operations should be reviewed
+  // LEGAL: May require legal hold check before purge
+  AUDIT_ACTION_PURGE = 250;
+
+  // PII data anonymized or pseudonymized.
+  // COMPLIANCE: GDPR Article 25, privacy by design
+  // LOG: Include anonymization method, data fields affected
+  // USAGE: Privacy-preserving analytics, right to erasure
+  AUDIT_ACTION_ANONYMIZE = 260;
+
+  // Security breach or intrusion detected.
+  // COMPLIANCE: MANDATORY notification (GDPR, HIPAA, state laws)
+  // LOG: Include detection method, affected systems, severity
+  // INCIDENT: Activate incident response immediately
+  // NOTIFICATION: May require regulatory and user notification
+  // TIMELINE: GDPR requires notification within 72 hours
+  AUDIT_ACTION_BREACH_DETECTION = 270;
+
+  // Security or business policy modified.
+  // COMPLIANCE: Critical for SOC 2, ISO 27001
+  // LOG: Include old policy, new policy, approver, reason
+  // ALERT: All policy changes should be reviewed
+  AUDIT_ACTION_POLICY_CHANGE = 280;
+
+  // System configuration changed.
+  // COMPLIANCE: Change management (SOC 2, ISO 27001)
+  // LOG: Include config key, old value, new value, change method
+  // ALERT: Production configuration changes
+  AUDIT_ACTION_CONFIG_CHANGE = 290;
+}
+
+// =============================================================================
+// SECTION 6: AUTHENTICATION CONTEXT
+// =============================================================================
+
+// AuthContext describes the authentication method and assurance level,
+// enabling risk-based access control and adaptive authentication.
+//
+// USAGE GUIDANCE:
+// - Include in every authenticated request
+// - Use for step-up authentication decisions
+// - Drive conditional access policies
+// - Feed into risk scoring algorithms
+//
+// ASSURANCE LEVELS (lowest to highest):
+// 1. ANONYMOUS (Level 0)
+// 2. PASSWORD (Level 1 - Low)
+// 3. API_KEY (Level 1 - Low)
+// 4. SSO (Level 2 - Medium)
+// 5. MFA, BIOMETRIC, WEBAUTHN (Level 3 - High)
+// 6. CERTIFICATE (Level 3 - High)
+// 7. DEVICE_TRUSTED + MFA (Level 4 - Very High)
+//
+// COMPLIANCE:
+// - NIST 800-63B: Digital Identity Guidelines
+// - SOC 2: Strong authentication controls
+// - ISO 27001: Authentication mechanisms (A.9.4)
+// - PCI DSS: Multi-factor authentication (Requirement 8.3)
+//
+// STEP-UP AUTHENTICATION:
+// Use lower assurance for read operations, require higher
+// assurance for sensitive operations (financial, PII access).
+//
+// RELATED ENUMS:
+// - RiskLevel: Combine with risk assessment
+// - AuditAction: Log authentication events
+enum AuthContext {
+  // Default/unknown authentication context.
+  AUTH_CONTEXT_UNSPECIFIED = 0;
+
+  // Password-only authentication (single factor).
+  // ASSURANCE: Low (NIST AAL1)
+  // RISK: Vulnerable to phishing, credential stuffing
+  // USAGE: Low-risk operations, read-only access
+  // RECOMMENDATION: Upgrade to MFA for sensitive operations
+  AUTH_CONTEXT_PASSWORD = 10;
+
+  // FIDO2/WebAuthn authentication (hardware security key).
+  // ASSURANCE: High (NIST AAL3)
+  // SECURITY: Phishing-resistant, hardware-backed
+  // COMPLIANCE: Meets highest security standards
+  // USAGE: Administrative access, financial transactions
+  AUTH_CONTEXT_WEBAUTHN = 20;
+
+  // Single sign-on via enterprise IdP.
+  // ASSURANCE: Medium (depends on IdP)
+  // PROTOCOLS: SAML, OAuth 2.0, OpenID Connect
+  // USAGE: Enterprise users, federated access
+  // TRUST: Depends on upstream IdP security posture
+  AUTH_CONTEXT_SSO = 30;
+
+  // Multi-factor authentication (2FA/MFA).
+  // ASSURANCE: High (NIST AAL2)
+  // FACTORS: Something you know + something you have
+  // COMPLIANCE: Required for PCI DSS, SOC 2
+  // USAGE: Sensitive operations, privileged access
+  AUTH_CONTEXT_MFA = 40;
+
+  // Request from recognized and trusted device.
+  // ASSURANCE: Medium (supplementary factor)
+  // IMPLEMENTATION: Device fingerprinting, registration
+  // USAGE: Combine with other factors for risk scoring
+  // SECURITY: Monitor for device spoofing
+  AUTH_CONTEXT_DEVICE_TRUSTED = 50;
+
+  // High-risk session detected by analytics.
+  // ASSURANCE: Varies (flagged for scrutiny)
+  // TRIGGERS: Unusual location, velocity, behavior
+  // ACTION: Require step-up authentication
+  // SECURITY: May block or challenge sensitive operations
+  AUTH_CONTEXT_RISK_ELEVATED = 60;
+
+  // Low-risk session (normal patterns).
+  // ASSURANCE: Varies (contextual)
+  // USAGE: Routine operations in normal patterns
+  // MONITORING: Continuously re-assess risk level
+  AUTH_CONTEXT_RISK_LOW = 70;
+
+  // Anonymous or guest access (no authentication).
+  // ASSURANCE: None (NIST AAL0)
+  // USAGE: Public content, marketing pages
+  // RESTRICTIONS: No access to user data or sensitive operations
+  // RATE LIMITING: Aggressive rate limits recommended
+  AUTH_CONTEXT_ANONYMOUS = 80;
+
+  // Biometric authentication (fingerprint, face, iris).
+  // ASSURANCE: High (NIST AAL2-AAL3)
+  // SECURITY: Local device authentication
+  // PRIVACY: Biometric data should never leave device
+  // USAGE: Mobile apps, physical access
+  // COMPLIANCE: GDPR special category data (Article 9)
+  AUTH_CONTEXT_BIOMETRIC = 90;
+
+  // Client certificate authentication (mutual TLS).
+  // ASSURANCE: High (NIST AAL3)
+  // USAGE: Service-to-service, B2B integrations
+  // SECURITY: Certificate pinning, proper PKI management
+  // COMPLIANCE: Strong authentication for privileged access
+  AUTH_CONTEXT_CERTIFICATE = 100;
+
+  // API key authentication (bearer token).
+  // ASSURANCE: Low-Medium (depends on key management)
+  // USAGE: Programmatic access, CI/CD, integrations
+  // SECURITY: Rotate regularly, scope narrowly, monitor usage
+  // RISK: Key compromise exposes all operations
+  AUTH_CONTEXT_API_KEY = 110;
+
+  // Service account (machine-to-machine authentication).
+  // ASSURANCE: Medium-High (depends on credential management)
+  // USAGE: Background jobs, automated processes, microservices
+  // SECURITY: Store credentials in vault, rotate regularly
+  // AUDIT: Enhanced logging for service account actions
+  // COMPLIANCE: Non-human identity management (SOC 2)
+  AUTH_CONTEXT_SERVICE_ACCOUNT = 120;
+}
+
+// =============================================================================
+// SECTION 7: RISK ASSESSMENT
+// =============================================================================
+
+// RiskLevel represents risk scoring for adaptive authentication,
+// access control, and security monitoring.
+//
+// USAGE GUIDANCE:
+// - Continuously calculate and update risk scores
+// - Combine multiple signals (location, device, behavior, time)
+// - Drive adaptive authentication and authorization
+// - Inform fraud detection and prevention
+//
+// RISK SIGNALS:
+// - Geographic anomalies (unusual location, impossible travel)
+// - Device trust level (new device, untrusted device)
+// - Behavioral anomalies (unusual access patterns, volume)
+// - Time-based factors (off-hours access, rapid succession)
+// - Network factors (TOR, VPN, suspicious IP reputation)
+// - Account factors (recently compromised, security alerts)
+// - Transaction factors (high value, unusual patterns)
+//
+// RESPONSE ACTIONS BY LEVEL:
+// - LOW: Normal operations, standard logging
+// - MODERATE: Enhanced logging, potential user notification
+// - HIGH: Step-up authentication, additional verification
+// - CRITICAL: Block operation, require admin review
+//
+// COMPLIANCE:
+// - PCI DSS: Transaction risk analysis (Requirement 8.3.1)
+// - NIST 800-63B: Risk-based authentication
+// - FFIEC Guidance: Multi-layered security
+//
+// RELATED ENUMS:
+// - AuthContext: Authentication strength
+// - Severity: Alert prioritization
+enum RiskLevel {
+  // Default/uninitialized risk level. Should not be used in production.
+  RISK_LEVEL_UNSPECIFIED = 0;
+
+  // Low risk - Normal operations expected.
+  // INDICATORS:
+  // - Trusted device from recognized location
+  // - Normal business hours access
+  // - Typical usage patterns
+  // - Strong authentication (MFA, WebAuthn)
+  // - No recent security incidents
+  //
+  // ACTIONS:
+  // - Allow normal operations
+  // - Standard logging
+  // - No additional verification
+  //
+  // EXAMPLE SCENARIOS:
+  // - Regular employee accessing internal systems
+  // - API calls within normal patterns
+  // - Low-value transactions
+  RISK_LEVEL_LOW = 10;
+
+  // Moderate risk - Some anomalies detected, proceed with caution.
+  // INDICATORS:
+  // - New device but known location
+  // - Slight deviation from normal patterns
+  // - Password-only authentication
+  // - Off-hours access (but not unusual for user)
+  // - Moderate transaction values
+  //
+  // ACTIONS:
+  // - Allow with enhanced logging
+  // - Consider user notification (email/SMS)
+  // - Monitor closely for escalation
+  // - May require CAPTCHA or security questions
+  //
+  // EXAMPLE SCENARIOS:
+  // - User traveling to new location
+  // - First-time API integration testing
+  // - Weekend access by known user
+  RISK_LEVEL_MODERATE = 20;
+
+  // High risk - Significant anomalies detected, additional verification required.
+  // INDICATORS:
+  // - New device from unusual location
+  // - Velocity anomalies (impossible travel)
+  // - Multiple failed authentication attempts
+  // - Access to high-value resources
+  // - Suspicious IP (TOR, VPN, known proxy)
+  // - Pattern similar to known attack vectors
+  //
+  // ACTIONS:
+  // - Require step-up authentication (MFA if not already)
+  // - Additional identity verification (security questions, OTP)
+  // - Block sensitive operations temporarily
+  // - Send immediate security alert to user
+  // - Review by security team if patterns persist
+  //
+  // EXAMPLE SCENARIOS:
+  // - Login from new country within hours of previous login
+  // - Large data export request from new device
+  // - High-value financial transaction
+  // - Privileged operation from unusual context
+  RISK_LEVEL_HIGH = 30;
+
+  // Critical risk - Strong indicators of fraud, breach, or compromise.
+  // INDICATORS:
+  // - Multiple risk factors simultaneously
+  // - Known malicious IP or device fingerprint
+  // - Account shows signs of compromise
+  // - Activity matches attack patterns
+  // - Bulk operations on sensitive data
+  // - Credential stuffing or brute force detected
+  // - Impossible travel with sensitive operations
+  //
+  // ACTIONS:
+  // - BLOCK operation immediately
+  // - Lock account temporarily
+  // - Require admin review and explicit unlock
+  // - Send security alert via all channels
+  // - Create security incident ticket
+  // - May require password reset and re-verification
+  // - Log extensively for forensics
+  //
+  // COMPLIANCE:
+  // - May trigger breach investigation procedures
+  // - Document decision for audit trail
+  //
+  // EXAMPLE SCENARIOS:
+  // - Bulk PII access from compromised credentials
+  // - Mass deletion operations
+  // - Multiple accounts accessed from same suspicious IP
+  // - Patterns matching known APT (Advanced Persistent Threat)
+  // - Privilege escalation attempts
+  RISK_LEVEL_CRITICAL = 40;
+}
+
+// =============================================================================
+// ADDITIONAL ENTERPRISE ENUMS
+// =============================================================================
+
+// DataClassification represents the sensitivity level of data for
+// compliance, access control, and data protection.
+//
+// USAGE GUIDANCE:
+// - Tag all data with appropriate classification
+// - Enforce classification-based access policies
+// - Drive encryption and DLP decisions
+// - Inform retention and disposal policies
+//
+// COMPLIANCE:
+// - ISO 27001: Information classification (A.8.2)
+// - SOC 2: Data classification scheme
+// - NIST SP 800-53: Security categorization
+//
+// RELATED ENUMS:
+// - AuditAction: ACCESS_SENSITIVE_DATA for restricted/confidential
+enum DataClassification {
+  // Default/unspecified classification. Must be explicitly classified.
+  DATA_CLASSIFICATION_UNSPECIFIED = 0;
+
+  // Public data - Can be freely shared with anyone.
+  // EXAMPLES: Marketing materials, public documentation, press releases
+  // PROTECTION: Minimal (integrity, availability)
+  // ENCRYPTION: Optional
+  // COMPLIANCE: No special requirements
+  DATA_CLASSIFICATION_PUBLIC = 10;
+
+  // Internal data - For internal use only, not for public disclosure.
+  // EXAMPLES: Internal memos, policies, org charts, project plans
+  // PROTECTION: Basic access controls
+  // ENCRYPTION: Recommended
+  // COMPLIANCE: Standard data protection
+  DATA_CLASSIFICATION_INTERNAL = 20;
+
+  // Confidential data - Sensitive business information.
+  // EXAMPLES: Financial reports, strategic plans, contracts, employee data
+  // PROTECTION: Strong access controls, need-to-know basis
+  // ENCRYPTION: Required at rest and in transit
+  // COMPLIANCE: Enhanced audit logging
+  // BREACH IMPACT: Moderate (business impact, competitive disadvantage)
+  DATA_CLASSIFICATION_CONFIDENTIAL = 30;
+
+  // Restricted data - Highly sensitive, regulated data.
+  // EXAMPLES: PII, PHI, PCI data, trade secrets, customer financial data
+  // PROTECTION: Strictest access controls, MFA required
+  // ENCRYPTION: Required (strong algorithms)
+  // COMPLIANCE: GDPR, HIPAA, PCI DSS, extensive audit logging
+  // BREACH IMPACT: Severe (legal liability, regulatory fines)
+  // RETENTION: Special retention and disposal requirements
+  // DLP: Data Loss Prevention required
+  DATA_CLASSIFICATION_RESTRICTED = 40;
+}
+
+// RetentionPeriod represents data retention requirements for compliance.
+//
+// USAGE GUIDANCE:
+// - Set retention period at data creation
+// - Automate deletion after retention expires
+// - Support legal hold overrides
+// - Document retention rationale
+//
+// COMPLIANCE:
+// - GDPR Article 5(1)(e): Storage limitation
+// - Industry-specific regulations (SOX, HIPAA, etc.)
+// - Geographic variations (EU vs US vs APAC)
+enum RetentionPeriod {
+  // Default/unspecified retention. Must be explicitly set.
+  RETENTION_PERIOD_UNSPECIFIED = 0;
+
+  // Ephemeral - Delete immediately after use.
+  // USAGE: Temporary tokens, OTP codes, cache
+  // COMPLIANCE: Privacy by design
+  RETENTION_PERIOD_EPHEMERAL = 10;
+
+  // Short-term - 30 days or less.
+  // USAGE: Session data, temporary uploads, preview data
+  RETENTION_PERIOD_SHORT = 20;
+
+  // Medium-term - 31 days to 1 year.
+  // USAGE: Recent transactions, active projects, logs
+  RETENTION_PERIOD_MEDIUM = 30;
+
+  // Long-term - 1 to 7 years.
+  // USAGE: Financial records, tax documents, contracts
+  // COMPLIANCE: SOX (7 years), HIPAA (6 years)
+  RETENTION_PERIOD_LONG = 40;
+
+  // Indefinite - Retain until explicitly deleted.
+  // USAGE: Master data, historical archives
+  // CAUTION: Must have business/legal justification
+  // COMPLIANCE: May conflict with GDPR minimization
+  RETENTION_PERIOD_INDEFINITE = 50;
+
+  // Legal hold - Retention frozen for litigation.
+  // USAGE: Data subject to legal proceedings
+  // OVERRIDES: All other retention policies
+  // REMOVAL: Requires explicit legal release
+  RETENTION_PERIOD_LEGAL_HOLD = 60;
+}

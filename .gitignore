@@ -64,9 +64,33 @@ yarn-error.log*
 *~
 .DS_Store
 
-# Generated proto files (optional - you may want to commit these)
-# Uncomment if you want to gitignore generated files
-rust/*/src/proto/
-python/*/src/*_pb2.py
-python/*/src/*_pb2_grpc.py
-ts/*/src/generated/
+# Generated proto files
+rust/proto/
+python/proto/
+ts/proto/
+*/src/generated/
+*_pb2.py
+*_pb2.pyi
+*_pb2_grpc.py
+*.pb.go
+
+# Buf cache
+.buf/
+
+# Documentation
+docs/generated/
+
+# Test coverage
+coverage/
+*.coverage
+.pytest_cache/
+
+# Environment files
+.env
+.env.local
+.env.*.local
+
+# Lock files (keep for reproducibility)
+# Cargo.lock - Keep for applications
+# pnpm-lock.yaml - Keep
+# poetry.lock - Keep if using poetry

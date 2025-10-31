@@ -1,0 +1,397 @@
+syntax = "proto3";
+
+package geniustechspace.notifications.v1;
+
+import "google/api/annotations.proto";
+import "google/protobuf/timestamp.proto";
+import "common/types.proto";
+
+option go_package = "github.com/geniustechspace/api-contracts/gen/go/notifications/v1";
+option java_multiple_files = true;
+option java_package = "com.geniustechspace.api.notifications.v1";
+
+// NotificationService manages user notifications
+service NotificationService {
+  // Send notification
+  rpc SendNotification(SendNotificationRequest) returns (SendNotificationResponse) {
+    option (google.api.http) = {
+      post: "/v1/notifications"
+      body: "*"
+    };
+  }
+
+  // Get notification by ID
+  rpc GetNotification(GetNotificationRequest) returns (GetNotificationResponse) {
+    option (google.api.http) = {
+      get: "/v1/notifications/{notification_id}"
+    };
+  }
+
+  // List notifications for user
+  rpc ListNotifications(ListNotificationsRequest) returns (ListNotificationsResponse) {
+    option (google.api.http) = {
+      get: "/v1/notifications"
+    };
+  }
+
+  // Mark notification as read
+  rpc MarkAsRead(MarkAsReadRequest) returns (MarkAsReadResponse) {
+    option (google.api.http) = {
+      post: "/v1/notifications/{notification_id}/read"
+      body: "*"
+    };
+  }
+
+  // Mark all notifications as read
+  rpc MarkAllAsRead(MarkAllAsReadRequest) returns (MarkAllAsReadResponse) {
+    option (google.api.http) = {
+      post: "/v1/notifications/read-all"
+      body: "*"
+    };
+  }
+
+  // Delete notification
+  rpc DeleteNotification(DeleteNotificationRequest) returns (DeleteNotificationResponse) {
+    option (google.api.http) = {
+      delete: "/v1/notifications/{notification_id}"
+    };
+  }
+
+  // Get notification preferences
+  rpc GetPreferences(GetPreferencesRequest) returns (GetPreferencesResponse) {
+    option (google.api.http) = {
+      get: "/v1/notifications/preferences"
+    };
+  }
+
+  // Update notification preferences
+  rpc UpdatePreferences(UpdatePreferencesRequest) returns (UpdatePreferencesResponse) {
+    option (google.api.http) = {
+      put: "/v1/notifications/preferences"
+      body: "*"
+    };
+  }
+
+  // Subscribe to push notifications
+  rpc SubscribePush(SubscribePushRequest) returns (SubscribePushResponse) {
+    option (google.api.http) = {
+      post: "/v1/notifications/push/subscribe"
+      body: "*"
+    };
+  }
+
+  // Unsubscribe from push notifications
+  rpc UnsubscribePush(UnsubscribePushRequest) returns (UnsubscribePushResponse) {
+    option (google.api.http) = {
+      post: "/v1/notifications/push/unsubscribe"
+      body: "*"
+    };
+  }
+}
+
+// NotificationType represents notification type
+enum NotificationType {
+  NOTIFICATION_TYPE_UNSPECIFIED = 0;
+  NOTIFICATION_TYPE_INFO = 1;
+  NOTIFICATION_TYPE_SUCCESS = 2;
+  NOTIFICATION_TYPE_WARNING = 3;
+  NOTIFICATION_TYPE_ERROR = 4;
+  NOTIFICATION_TYPE_SYSTEM = 5;
+}
+
+// NotificationChannel represents delivery channel
+enum NotificationChannel {
+  NOTIFICATION_CHANNEL_UNSPECIFIED = 0;
+  NOTIFICATION_CHANNEL_IN_APP = 1;
+  NOTIFICATION_CHANNEL_EMAIL = 2;
+  NOTIFICATION_CHANNEL_SMS = 3;
+  NOTIFICATION_CHANNEL_PUSH = 4;
+}
+
+// NotificationPriority represents notification priority
+enum NotificationPriority {
+  NOTIFICATION_PRIORITY_UNSPECIFIED = 0;
+  NOTIFICATION_PRIORITY_LOW = 1;
+  NOTIFICATION_PRIORITY_NORMAL = 2;
+  NOTIFICATION_PRIORITY_HIGH = 3;
+  NOTIFICATION_PRIORITY_URGENT = 4;
+}
+
+// Notification represents a notification entity
+message Notification {
+  // Notification ID
+  string notification_id = 1;
+
+  // User ID
+  string user_id = 2;
+
+  // Title
+  string title = 3;
+
+  // Message body
+  string message = 4;
+
+  // Notification type
+  NotificationType type = 5;
+
+  // Priority
+  NotificationPriority priority = 6;
+
+  // Whether read
+  bool is_read = 7;
+
+  // Channel used
+  NotificationChannel channel = 8;
+
+  // Action URL
+  string action_url = 9;
+
+  // Icon URL
+  string icon_url = 10;
+
+  // Image URL
+  string image_url = 11;
+
+  // Metadata
+  common.Metadata metadata = 12;
+
+  // Read timestamp
+  google.protobuf.Timestamp read_at = 13;
+
+  // Additional data
+  map<string, string> data = 14;
+
+  // Category
+  string category = 15;
+}
+
+// NotificationPreferences represents user notification preferences
+message NotificationPreferences {
+  // User ID
+  string user_id = 1;
+
+  // Enable in-app notifications
+  bool in_app_enabled = 2;
+
+  // Enable email notifications
+  bool email_enabled = 3;
+
+  // Enable SMS notifications
+  bool sms_enabled = 4;
+
+  // Enable push notifications
+  bool push_enabled = 5;
+
+  // Category preferences
+  map<string, CategoryPreferences> categories = 6;
+
+  // Quiet hours start (HH:MM format)
+  string quiet_hours_start = 7;
+
+  // Quiet hours end (HH:MM format)
+  string quiet_hours_end = 8;
+
+  // Timezone
+  string timezone = 9;
+}
+
+// CategoryPreferences represents preferences for a notification category
+message CategoryPreferences {
+  // Category enabled
+  bool enabled = 1;
+
+  // In-app enabled
+  bool in_app = 2;
+
+  // Email enabled
+  bool email = 3;
+
+  // SMS enabled
+  bool sms = 4;
+
+  // Push enabled
+  bool push = 5;
+}
+
+// SendNotificationRequest sends notification
+message SendNotificationRequest {
+  // User ID or email
+  string recipient = 1;
+
+  // Title
+  string title = 2;
+
+  // Message
+  string message = 3;
+
+  // Type
+  NotificationType type = 4;
+
+  // Priority
+  NotificationPriority priority = 5;
+
+  // Channels to use
+  repeated NotificationChannel channels = 6;
+
+  // Action URL
+  string action_url = 7;
+
+  // Icon URL
+  string icon_url = 8;
+
+  // Image URL
+  string image_url = 9;
+
+  // Category
+  string category = 10;
+
+  // Additional data
+  map<string, string> data = 11;
+}
+
+// SendNotificationResponse returns sent notification
+message SendNotificationResponse {
+  // Notification
+  Notification notification = 1;
+
+  // Delivery status by channel
+  map<string, string> delivery_status = 2;
+}
+
+// GetNotificationRequest gets notification
+message GetNotificationRequest {
+  // Notification ID
+  string notification_id = 1;
+}
+
+// GetNotificationResponse returns notification
+message GetNotificationResponse {
+  // Notification
+  Notification notification = 1;
+}
+
+// ListNotificationsRequest lists notifications
+message ListNotificationsRequest {
+  // Pagination
+  common.PaginationRequest pagination = 1;
+
+  // Filter by read status
+  optional bool is_read = 2;
+
+  // Filter by type
+  optional NotificationType type = 3;
+
+  // Filter by category
+  optional string category = 4;
+
+  // Filter by priority
+  optional NotificationPriority priority = 5;
+}
+
+// ListNotificationsResponse returns notifications
+message ListNotificationsResponse {
+  // Notifications
+  repeated Notification notifications = 1;
+
+  // Pagination
+  common.PaginationResponse pagination = 2;
+
+  // Unread count
+  int32 unread_count = 3;
+}
+
+// MarkAsReadRequest marks notification as read
+message MarkAsReadRequest {
+  // Notification ID
+  string notification_id = 1;
+}
+
+// MarkAsReadResponse confirms marked as read
+message MarkAsReadResponse {
+  // Success
+  bool success = 1;
+}
+
+// MarkAllAsReadRequest marks all as read
+message MarkAllAsReadRequest {
+  // Optional category filter
+  optional string category = 1;
+}
+
+// MarkAllAsReadResponse confirms all marked as read
+message MarkAllAsReadResponse {
+  // Success
+  bool success = 1;
+
+  // Count of notifications marked
+  int32 count = 2;
+}
+
+// DeleteNotificationRequest deletes notification
+message DeleteNotificationRequest {
+  // Notification ID
+  string notification_id = 1;
+}
+
+// DeleteNotificationResponse confirms deletion
+message DeleteNotificationResponse {
+  // Success
+  bool success = 1;
+}
+
+// GetPreferencesRequest gets preferences
+message GetPreferencesRequest {
+  // User ID (optional, defaults to current user)
+  optional string user_id = 1;
+}
+
+// GetPreferencesResponse returns preferences
+message GetPreferencesResponse {
+  // Preferences
+  NotificationPreferences preferences = 1;
+}
+
+// UpdatePreferencesRequest updates preferences
+message UpdatePreferencesRequest {
+  // Preferences
+  NotificationPreferences preferences = 1;
+}
+
+// UpdatePreferencesResponse confirms update
+message UpdatePreferencesResponse {
+  // Updated preferences
+  NotificationPreferences preferences = 1;
+}
+
+// SubscribePushRequest subscribes to push notifications
+message SubscribePushRequest {
+  // Device token
+  string device_token = 1;
+
+  // Device type (ios/android/web)
+  string device_type = 2;
+
+  // Device name
+  string device_name = 3;
+}
+
+// SubscribePushResponse confirms subscription
+message SubscribePushResponse {
+  // Success
+  bool success = 1;
+
+  // Subscription ID
+  string subscription_id = 2;
+}
+
+// UnsubscribePushRequest unsubscribes from push
+message UnsubscribePushRequest {
+  // Device token or subscription ID
+  string identifier = 1;
+}
+
+// UnsubscribePushResponse confirms unsubscribe
+message UnsubscribePushResponse {
+  // Success
+  bool success = 1;
+}

@@ -1,0 +1,358 @@
+syntax = "proto3";
+
+package geniustechspace.audit.v1;
+
+import "google/api/annotations.proto";
+import "google/protobuf/timestamp.proto";
+import "google/protobuf/struct.proto";
+import "common/types.proto";
+
+option go_package = "github.com/geniustechspace/api-contracts/gen/go/audit/v1";
+option java_multiple_files = true;
+option java_package = "com.geniustechspace.api.audit.v1";
+
+// AuditService manages audit logs and compliance tracking
+service AuditService {
+  // Create audit log entry
+  rpc CreateAuditLog(CreateAuditLogRequest) returns (CreateAuditLogResponse) {
+    option (google.api.http) = {
+      post: "/v1/audit/logs"
+      body: "*"
+    };
+  }
+
+  // Get audit log by ID
+  rpc GetAuditLog(GetAuditLogRequest) returns (GetAuditLogResponse) {
+    option (google.api.http) = {
+      get: "/v1/audit/logs/{log_id}"
+    };
+  }
+
+  // List audit logs with filtering
+  rpc ListAuditLogs(ListAuditLogsRequest) returns (ListAuditLogsResponse) {
+    option (google.api.http) = {
+      get: "/v1/audit/logs"
+    };
+  }
+
+  // Search audit logs
+  rpc SearchAuditLogs(SearchAuditLogsRequest) returns (SearchAuditLogsResponse) {
+    option (google.api.http) = {
+      post: "/v1/audit/logs/search"
+      body: "*"
+    };
+  }
+
+  // Export audit logs
+  rpc ExportAuditLogs(ExportAuditLogsRequest) returns (ExportAuditLogsResponse) {
+    option (google.api.http) = {
+      post: "/v1/audit/logs/export"
+      body: "*"
+    };
+  }
+
+  // Get audit statistics
+  rpc GetAuditStats(GetAuditStatsRequest) returns (GetAuditStatsResponse) {
+    option (google.api.http) = {
+      get: "/v1/audit/stats"
+    };
+  }
+}
+
+// EventType represents type of audited event
+enum EventType {
+  EVENT_TYPE_UNSPECIFIED = 0;
+  EVENT_TYPE_CREATE = 1;
+  EVENT_TYPE_READ = 2;
+  EVENT_TYPE_UPDATE = 3;
+  EVENT_TYPE_DELETE = 4;
+  EVENT_TYPE_LOGIN = 5;
+  EVENT_TYPE_LOGOUT = 6;
+  EVENT_TYPE_ACCESS_GRANTED = 7;
+  EVENT_TYPE_ACCESS_DENIED = 8;
+  EVENT_TYPE_EXPORT = 9;
+  EVENT_TYPE_IMPORT = 10;
+  EVENT_TYPE_SECURITY = 11;
+  EVENT_TYPE_CONFIGURATION = 12;
+}
+
+// Severity represents event severity level
+enum Severity {
+  SEVERITY_UNSPECIFIED = 0;
+  SEVERITY_DEBUG = 1;
+  SEVERITY_INFO = 2;
+  SEVERITY_WARNING = 3;
+  SEVERITY_ERROR = 4;
+  SEVERITY_CRITICAL = 5;
+}
+
+// AuditLog represents an audit log entry
+message AuditLog {
+  // Log ID
+  string log_id = 1;
+
+  // Event type
+  EventType event_type = 2;
+
+  // Event action description
+  string action = 3;
+
+  // Resource type (user, payment, organization, etc.)
+  string resource_type = 4;
+
+  // Resource ID
+  string resource_id = 5;
+
+  // Actor user ID
+  string actor_id = 6;
+
+  // Actor email
+  string actor_email = 7;
+
+  // Actor IP address
+  string ip_address = 8;
+
+  // User agent
+  string user_agent = 9;
+
+  // Organization ID (if applicable)
+  string organization_id = 10;
+
+  // Severity
+  Severity severity = 11;
+
+  // Status (success/failure)
+  string status = 12;
+
+  // Error message (if failed)
+  string error_message = 13;
+
+  // Changes made (before/after)
+  google.protobuf.Struct changes = 14;
+
+  // Additional metadata
+  google.protobuf.Struct metadata = 15;
+
+  // Timestamp
+  google.protobuf.Timestamp timestamp = 16;
+
+  // Request ID for correlation
+  string request_id = 17;
+
+  // Session ID
+  string session_id = 18;
+
+  // Tags for categorization
+  repeated string tags = 19;
+
+  // Geographic location
+  string location = 20;
+}
+
+// CreateAuditLogRequest creates audit log entry
+message CreateAuditLogRequest {
+  // Event type
+  EventType event_type = 1;
+
+  // Action description
+  string action = 2;
+
+  // Resource type
+  string resource_type = 3;
+
+  // Resource ID
+  string resource_id = 4;
+
+  // Actor ID (optional, can be derived from auth)
+  optional string actor_id = 5;
+
+  // Severity
+  Severity severity = 6;
+
+  // Status
+  string status = 7;
+
+  // Error message
+  string error_message = 8;
+
+  // Changes
+  google.protobuf.Struct changes = 9;
+
+  // Metadata
+  google.protobuf.Struct metadata = 10;
+
+  // Tags
+  repeated string tags = 11;
+}
+
+// CreateAuditLogResponse returns created log
+message CreateAuditLogResponse {
+  // Audit log
+  AuditLog log = 1;
+}
+
+// GetAuditLogRequest gets audit log
+message GetAuditLogRequest {
+  // Log ID
+  string log_id = 1;
+}
+
+// GetAuditLogResponse returns audit log
+message GetAuditLogResponse {
+  // Audit log
+  AuditLog log = 1;
+}
+
+// ListAuditLogsRequest lists audit logs
+message ListAuditLogsRequest {
+  // Pagination
+  common.PaginationRequest pagination = 1;
+
+  // Filter by event type
+  optional EventType event_type = 2;
+
+  // Filter by resource type
+  optional string resource_type = 3;
+
+  // Filter by resource ID
+  optional string resource_id = 4;
+
+  // Filter by actor ID
+  optional string actor_id = 5;
+
+  // Filter by organization ID
+  optional string organization_id = 6;
+
+  // Filter by severity
+  optional Severity severity = 7;
+
+  // Filter by start date
+  optional google.protobuf.Timestamp start_date = 8;
+
+  // Filter by end date
+  optional google.protobuf.Timestamp end_date = 9;
+
+  // Sort field
+  string sort_by = 10;
+
+  // Sort order
+  string sort_order = 11;
+}
+
+// ListAuditLogsResponse returns audit logs
+message ListAuditLogsResponse {
+  // Audit logs
+  repeated AuditLog logs = 1;
+
+  // Pagination
+  common.PaginationResponse pagination = 2;
+}
+
+// SearchAuditLogsRequest searches audit logs
+message SearchAuditLogsRequest {
+  // Search query
+  string query = 1;
+
+  // Pagination
+  common.PaginationRequest pagination = 2;
+
+  // Filters (same as ListAuditLogsRequest)
+  optional EventType event_type = 3;
+  optional string resource_type = 4;
+  optional string actor_id = 5;
+  optional Severity severity = 6;
+  optional google.protobuf.Timestamp start_date = 7;
+  optional google.protobuf.Timestamp end_date = 8;
+}
+
+// SearchAuditLogsResponse returns search results
+message SearchAuditLogsResponse {
+  // Audit logs
+  repeated AuditLog logs = 1;
+
+  // Pagination
+  common.PaginationResponse pagination = 2;
+}
+
+// ExportAuditLogsRequest exports audit logs
+message ExportAuditLogsRequest {
+  // Format (csv, json, pdf)
+  string format = 1;
+
+  // Filters (same as ListAuditLogsRequest)
+  optional EventType event_type = 2;
+  optional string resource_type = 3;
+  optional string actor_id = 4;
+  optional Severity severity = 5;
+  optional google.protobuf.Timestamp start_date = 6;
+  optional google.protobuf.Timestamp end_date = 7;
+}
+
+// ExportAuditLogsResponse returns export URL
+message ExportAuditLogsResponse {
+  // Export URL
+  string export_url = 1;
+
+  // Export ID for tracking
+  string export_id = 2;
+
+  // Expiration timestamp
+  google.protobuf.Timestamp expires_at = 3;
+}
+
+// GetAuditStatsRequest gets audit statistics
+message GetAuditStatsRequest {
+  // Start date
+  google.protobuf.Timestamp start_date = 1;
+
+  // End date
+  google.protobuf.Timestamp end_date = 2;
+
+  // Group by (event_type, resource_type, actor, severity)
+  string group_by = 3;
+}
+
+// GetAuditStatsResponse returns statistics
+message GetAuditStatsResponse {
+  // Total events
+  int64 total_events = 1;
+
+  // Events by type
+  map<string, int64> events_by_type = 2;
+
+  // Events by severity
+  map<string, int64> events_by_severity = 3;
+
+  // Events by resource type
+  map<string, int64> events_by_resource = 4;
+
+  // Top actors
+  repeated ActorStats top_actors = 5;
+
+  // Events over time (time series)
+  repeated TimeSeriesPoint time_series = 6;
+}
+
+// ActorStats represents statistics for an actor
+message ActorStats {
+  // Actor ID
+  string actor_id = 1;
+
+  // Actor email
+  string actor_email = 2;
+
+  // Event count
+  int64 event_count = 3;
+
+  // Last activity
+  google.protobuf.Timestamp last_activity = 4;
+}
+
+// TimeSeriesPoint represents a point in time series
+message TimeSeriesPoint {
+  // Timestamp
+  google.protobuf.Timestamp timestamp = 1;
+
+  // Count
+  int64 count = 2;
+}

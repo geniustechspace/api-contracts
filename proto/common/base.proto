@@ -1,0 +1,126 @@
+syntax = "proto3";
+
+package geniustechspace.common.v1;
+
+// =============================================================================
+// BASE TYPES MODULE - v1.0.0
+// =============================================================================
+//
+// Core types for API responses, error handling, and operation results.
+// These types form the foundation of all API communication.
+//
+// USAGE:
+// - Import in all service definitions
+// - Use ApiResponse as standard response envelope
+// - Use ErrorDetail for comprehensive error reporting
+//
+// COMPLIANCE:
+// - SOC 2: Error logging and monitoring
+// - GDPR: Avoid exposing PII in error messages
+// - ISO 27001: Security event logging
+//
+// =============================================================================
+
+import "google/protobuf/timestamp.proto";
+import "google/protobuf/struct.proto";
+import "common/enums.proto";
+
+// Language-specific code generation options
+option go_package = "github.com/geniustechspace/api-contracts/gen/go/common/v1";
+option java_multiple_files = true;
+option java_package = "com.geniustechspace.api.common.v1";
+
+// =============================================================================
+// ERROR HANDLING
+// =============================================================================
+
+// ErrorDetail provides comprehensive error information for troubleshooting
+// and client-side error handling.
+//
+// USAGE:
+// - Include in all error responses
+// - Provide actionable information for clients
+// - Support multiple errors in a single response
+//
+// COMPLIANCE:
+// - SOC 2: Error logging and monitoring
+// - GDPR: Avoid exposing PII in error messages
+message ErrorDetail {
+  // Machine-readable error code for programmatic handling.
+  // See ErrorCode enum in enums.proto for all possible values.
+  ErrorCode code = 1;
+
+  // Human-readable error message in the requested locale.
+  // SECURITY: Never expose internal stack traces or sensitive details.
+  // LOCALIZATION: Should be localized based on Accept-Language header.
+  string message = 2;
+
+  // Field path(s) that caused the error (for validation errors).
+  // EXAMPLE: ["user.email", "user.phone_number"]
+  // FORMAT: Dot notation for nested fields
+  repeated string fields = 3;
+
+  // Additional context and metadata about the error.
+  // USAGE: Include relevant identifiers, constraints, or recovery hints
+  // EXAMPLE: {"max_length": "255", "actual_length": "300"}
+  map<string, string> metadata = 4;
+
+  // Optional documentation URL for error resolution.
+  // USAGE: Link to knowledge base or documentation
+  // EXAMPLE: "https://docs.example.com/errors/invalid-email"
+  string documentation_url = 5;
+
+  // Error severity for client-side handling and alerting.
+  // USAGE: Helps clients decide whether to retry, alert user, or fail silently
+  Severity severity = 6;
+}
+
+// =============================================================================
+// API RESPONSE ENVELOPE
+// =============================================================================
+
+// ApiResponse is a standardized response envelope for all API operations.
+//
+// USAGE:
+// - Wrap all RPC responses in this envelope
+// - Provides consistent structure for success and error cases
+// - Enables middleware to inspect responses uniformly
+//
+// COMPLIANCE:
+// - SOC 2: Consistent audit trail with request tracking
+// - ISO 27001: Operation outcome logging
+message ApiResponse {
+  // High-level operation outcome.
+  // USAGE: Check this first to determine success/failure
+  Status status = 1;
+
+  // Human-readable message summarizing the operation result.
+  // LOCALIZATION: Should be localized based on Accept-Language header
+  string message = 2;
+
+  // Detailed error information if status is not SUCCESS.
+  // USAGE: Empty for successful operations, populated for errors
+  // VALIDATION: Should have at least one error if status is FAILURE
+  repeated ErrorDetail errors = 3;
+
+  // Server timestamp when the response was generated.
+  // USAGE: For latency measurement, debugging, audit trails
+  // FORMAT: UTC timezone
+  google.protobuf.Timestamp timestamp = 4;
+
+  // Unique request identifier for correlation and tracing.
+  // USAGE: Include in logs, link client and server logs
+  // COMPLIANCE: Required for audit trails (SOC 2)
+  // FORMAT: UUID v4 recommended
+  string request_id = 5;
+
+  // Optional trace identifier for distributed tracing.
+  // USAGE: OpenTelemetry or similar tracing systems
+  // FORMAT: Trace ID from W3C Trace Context or similar
+  string trace_id = 6;
+
+  // Response data payload (use google.protobuf.Any for flexibility).
+  // USAGE: Actual response data wrapped in envelope
+  // NOTE: Consider using typed response messages instead where possible
+  google.protobuf.Struct data = 7;
+}

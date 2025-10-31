@@ -1,0 +1,122 @@
+syntax = "proto3";
+
+package geniustechspace.common.v1;
+
+// =============================================================================
+// METADATA MODULE - v1.0.0
+// =============================================================================
+//
+// Audit trail and metadata types for tracking entity lifecycle and changes.
+// Provides comprehensive information about who, what, when, and where.
+//
+// USAGE:
+// - Embed in all persistent entities
+// - Track creation, modification, and deletion
+// - Support compliance and audit requirements
+//
+// COMPLIANCE:
+// - SOC 2: Complete audit trails required
+// - GDPR: Data subject access requests
+// - ISO 27001: Change management tracking
+// - HIPAA: Access logs and modifications
+//
+// =============================================================================
+
+import "google/protobuf/timestamp.proto";
+import "common/enums.proto";
+
+// Language-specific code generation options
+option go_package = "github.com/geniustechspace/api-contracts/gen/go/common/v1";
+option java_multiple_files = true;
+option java_package = "com.geniustechspace.api.common.v1";
+option csharp_namespace = "GeniusTechSpace.Api.Common.V1";
+option php_namespace = "GeniusTechSpace\\Api\\Common\\V1";
+option ruby_package = "GeniusTechSpace::Api::Common::V1";
+
+// =============================================================================
+// AUDIT METADATA
+// =============================================================================
+
+// Metadata tracks comprehensive information about entity lifecycle and changes.
+//
+// USAGE:
+// - Embed in all domain entities as a standard field
+// - Update on every modification
+// - Never delete, only mark as deleted with soft delete patterns
+//
+// COMPLIANCE:
+// - SOC 2: Required for audit trails and change tracking
+// - GDPR: Required for data subject access requests
+// - ISO 27001: Required for information security management
+// - HIPAA: Required for PHI access and modification logs
+message Metadata {
+  // Entity creation timestamp (immutable after creation).
+  // USAGE: Set once during entity creation
+  // FORMAT: UTC timezone
+  // COMPLIANCE: SOC 2, ISO 27001 - Required for audit trail
+  google.protobuf.Timestamp created_at = 1;
+
+  // User or service identifier that created the entity.
+  // USAGE: User ID, service account, or system identifier
+  // FORMAT: UUID, email, or service principal name
+  // COMPLIANCE: SOC 2, ISO 27001, HIPAA - Required for audit trail
+  string created_by = 2;
+
+  // Most recent update timestamp.
+  // USAGE: Update on every modification
+  // FORMAT: UTC timezone
+  // COMPLIANCE: SOC 2, GDPR - Required for change tracking
+  google.protobuf.Timestamp updated_at = 3;
+
+  // User or service identifier that last updated the entity.
+  // USAGE: User ID, service account, or system identifier
+  // FORMAT: UUID, email, or service principal name
+  // COMPLIANCE: SOC 2, ISO 27001, HIPAA - Required for audit trail
+  string updated_by = 4;
+
+  // Optional deletion timestamp for soft delete pattern.
+  // USAGE: Null for active entities, set for deleted entities
+  // FORMAT: UTC timezone
+  // COMPLIANCE: GDPR - Right to erasure (logical deletion)
+  google.protobuf.Timestamp deleted_at = 5;
+
+  // Optional user or service identifier that deleted the entity.
+  // USAGE: Only set when deleted_at is not null
+  // FORMAT: UUID, email, or service principal name
+  // COMPLIANCE: SOC 2, ISO 27001 - Required for deletion audit trail
+  string deleted_by = 6;
+
+  // Entity version for optimistic locking and conflict detection.
+  // USAGE: Increment on every update, check before writes
+  // PATTERN: Start at 1, increment atomically
+  // CONCURRENCY: Prevents lost updates in distributed systems
+  int64 version = 7;
+
+  // Entity-specific tags for categorization and filtering.
+  // USAGE: Organizational tags, cost centers, teams, etc.
+  // EXAMPLE: ["team:engineering", "environment:production"]
+  // COMPLIANCE: CCPA - Data inventory and classification
+  repeated string tags = 8;
+
+  // Arbitrary key-value pairs for extensibility.
+  // USAGE: Store additional metadata without schema changes
+  // EXAMPLE: {"tenant_id": "abc-123", "region": "us-west-2"}
+  // SECURITY: Avoid storing sensitive data here
+  map<string, string> custom_attributes = 9;
+
+  // Data classification level for access control and encryption.
+  // USAGE: Determines encryption requirements and access policies
+  // COMPLIANCE: ISO 27001, PCI DSS - Data classification mandatory
+  DataClassification classification = 10;
+
+  // Retention period category for lifecycle management.
+  // USAGE: Determines when data can be archived or deleted
+  // COMPLIANCE: GDPR, CCPA - Data minimization and retention limits
+  RetentionPeriod retention_period = 11;
+
+  // Audit actions performed on this entity (last N actions).
+  // USAGE: Track key operations for compliance and troubleshooting
+  // LIMIT: Store last 10-20 actions, archive older ones
+  // COMPLIANCE: SOC 2, ISO 27001 - Audit trail requirements
+  repeated AuditAction audit_trail = 12;
+}

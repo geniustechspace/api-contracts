@@ -1,0 +1,54 @@
+version: v1
+managed:
+  enabled: true
+  go_package_prefix:
+    default: github.com/geniustechspace/api-contracts/gen/go
+  java_package_prefix:
+    default: com.geniustechspace.api
+
+plugins:
+  # Rust - Prost for message types
+  - name: prost
+    out: rust/proto
+    opt:
+      - bytes=bytes
+      - type_attribute=.=::serde::Serialize,::serde::Deserialize
+      - field_attribute=.=::serde::rename_all="camelCase"
+
+  # Rust - Tonic for gRPC services
+  - name: tonic
+    out: rust/proto
+    opt:
+      - build_client=true
+      - build_server=false
+      - compile_well_known_types=true
+
+  # Python - Basic protobuf
+  - name: python
+    out: python/proto
+    opt:
+      - pyi_out=python/proto
+
+  # Python - gRPC services
+  - name: pyi
+    out: python/proto
+
+  - name: grpc_python
+    out: python/proto
+
+  # TypeScript - ts-proto (modern alternative)
+  - name: ts_proto
+    out: ts/proto
+    opt:
+      - esModuleInterop=true
+      - outputJsonMethods=true
+      - outputClientImpl=grpc-web
+      - useOptionals=messages
+      - exportCommonSymbols=false
+      - env=browser
+
+  # Documentation
+  - name: doc
+    out: docs
+    opt:
+      - markdown,docs.md

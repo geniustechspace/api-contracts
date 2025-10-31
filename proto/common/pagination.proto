@@ -1,0 +1,135 @@
+syntax = "proto3";
+
+package geniustechspace.common.v1;
+
+// =============================================================================
+// PAGINATION MODULE - v1.0.0
+// =============================================================================
+//
+// Standardized pagination for list operations with cursor and offset support.
+// Provides consistent pagination experience across all APIs.
+//
+// USAGE:
+// - All list/search operations
+// - Large result sets
+// - Infinite scroll and lazy loading
+//
+// PATTERNS:
+// - Cursor-based: For real-time data, prevents skipped/duplicate results
+// - Offset-based: For stable datasets, allows random page access
+//
+// =============================================================================
+
+// Language-specific code generation options
+option go_package = "github.com/geniustechspace/api-contracts/gen/go/common/v1";
+option java_multiple_files = true;
+option java_package = "com.geniustechspace.api.common.v1";
+option csharp_namespace = "GeniusTechSpace.Api.Common.V1";
+option php_namespace = "GeniusTechSpace\\Api\\Common\\V1";
+option ruby_package = "GeniusTechSpace::Api::Common::V1";
+
+// =============================================================================
+// PAGINATION REQUEST
+// =============================================================================
+
+// PaginationRequest provides parameters for paginated list operations.
+//
+// USAGE:
+// - Include in all list/search request messages
+// - Choose between cursor and offset strategies
+// - Set reasonable default page sizes
+//
+// RECOMMENDATIONS:
+// - Use cursor-based for real-time or frequently changing data
+// - Use offset-based for stable datasets or when page numbers matter
+// - Default page_size: 20-50 items
+// - Maximum page_size: 100-500 items (prevent resource exhaustion)
+message PaginationRequest {
+  // Number of items per page.
+  // USAGE: Control result set size
+  // DEFAULT: 20
+  // RANGE: 1-500 (enforce server-side maximum)
+  // PERFORMANCE: Smaller pages = faster response, more requests
+  int32 page_size = 1;
+
+  // Cursor for cursor-based pagination (opaque token).
+  // USAGE: Token from previous PaginationResponse.next_cursor
+  // FORMAT: Base64-encoded or encrypted string
+  // PATTERN: Stateless, includes ordering and filter context
+  // ADVANTAGES: Handles real-time data changes, no skipped items
+  string cursor = 2;
+
+  // Page offset for offset-based pagination (zero-indexed).
+  // USAGE: Page number * page_size
+  // EXAMPLE: page_size=20, offset=40 → returns items 41-60
+  // RANGE: >= 0
+  // DISADVANTAGES: May skip items if data changes between requests
+  int32 offset = 3;
+
+  // Optional field name to sort by.
+  // USAGE: Specify entity field for ordering
+  // EXAMPLE: "created_at", "name", "price"
+  // DEFAULT: Entity-specific (usually primary key or created_at)
+  string sort_by = 4;
+
+  // Sort order (ascending or descending).
+  // USAGE: true = ascending (A-Z, 0-9), false = descending (Z-A, 9-0)
+  // DEFAULT: false (descending, newest first)
+  bool sort_ascending = 5;
+}
+
+// =============================================================================
+// PAGINATION RESPONSE
+// =============================================================================
+
+// PaginationResponse provides metadata about paginated results.
+//
+// USAGE:
+// - Include in all list/search response messages
+// - Provide navigation information to clients
+// - Support both cursor and offset pagination strategies
+message PaginationResponse {
+  // Total number of items across all pages.
+  // USAGE: Calculate total pages, show "X of Y" to users
+  // COST: May require separate count query
+  // OPTIMIZATION: Cache for stable datasets, omit for real-time data
+  int64 total_items = 1;
+
+  // Total number of pages based on page_size.
+  // USAGE: Render page numbers, validate page selection
+  // CALCULATION: ceil(total_items / page_size)
+  // OPTIMIZATION: Cache for stable datasets
+  int32 total_pages = 2;
+
+  // Current page number (zero-indexed for offset, N/A for cursor).
+  // USAGE: Highlight current page in UI
+  // RANGE: 0 to total_pages - 1
+  int32 current_page = 3;
+
+  // Number of items in the current page.
+  // USAGE: May be less than page_size on last page
+  // VALIDATION: Should be <= page_size
+  int32 page_size = 4;
+
+  // Cursor for the next page (null if no more pages).
+  // USAGE: Pass to next request's PaginationRequest.cursor
+  // FORMAT: Opaque token, client should not parse
+  // NULL: Indicates last page
+  string next_cursor = 5;
+
+  // Cursor for the previous page (null if first page).
+  // USAGE: Pass to previous request's PaginationRequest.cursor
+  // FORMAT: Opaque token, client should not parse
+  // NULL: Indicates first page
+  string previous_cursor = 6;
+
+  // Whether there are more pages after the current one.
+  // USAGE: Enable/disable "Next" button, infinite scroll
+  // OPTIMIZATION: Cheaper than calculating total_items
+  bool has_next = 7;
+
+  // Whether there are pages before the current one.
+  // USAGE: Enable/disable "Previous" button
+  // SIMPLE: current_page > 0 for offset-based
+  bool has_previous = 8;
+}
