@@ -1,0 +1,240 @@
+syntax = "proto3";
+
+package geniustechspace.common.operations.v1;
+
+import "google/protobuf/duration.proto";
+import "common/operations/types.proto";
+import "common/operations/request.proto";
+import "common/operations/response.proto";
+
+// =============================================================================
+// BATCH OPERATION MESSAGES - v1.0.0
+// =============================================================================
+//
+// This file defines standardized batch operation messages for executing
+// multiple operations efficiently in a single request.
+//
+// DESIGN PRINCIPLES:
+// - Support bulk operation processing
+// - Enable transactional semantics
+// - Provide error handling strategies
+// - Optimize network overhead
+//
+// VERSION HISTORY:
+// - 1.0.0 (2025-11-01): Initial enterprise-standard release
+//
+// COMPLIANCE SCOPE:
+// - SOC 2: Batch operation audit and tracking
+// - ISO 27001: Bulk data processing controls
+// - GDPR: Batch data subject request handling
+//
+// =============================================================================
+
+// Options for language-specific code generation and package mappings.
+option go_package = "github.com/geniustechspace/api-contracts/gen/go/common/operations/v1";
+option java_multiple_files = true;
+option java_package = "com.geniustechspace.api.common.operations.v1";
+option csharp_namespace = "GeniusTechSpace.Api.Common.Operations.V1";
+option php_namespace = "GeniusTechSpace\\Api\\Common\\Operations\\V1";
+option ruby_package = "GeniusTechSpace::Api::Common::Operations::V1";
+
+// =============================================================================
+// BATCH OPERATION MESSAGES
+// =============================================================================
+
+// BatchOperationRequest represents a request to execute multiple operations
+// in a single request.
+//
+// USAGE:
+// - Execute multiple operations efficiently
+// - Support transactional semantics when possible
+// - Reduce network overhead for bulk operations
+// - Enable parallel processing where appropriate
+//
+// SECURITY:
+// - Each operation validated independently
+// - Authorization checked for each operation
+// - Rate limiting applied to batch as a whole
+//
+// COMPLIANCE:
+// - Each operation audited individually
+// - Batch operation logged for compliance tracking
+// - Transaction semantics documented for data integrity
+//
+// EXAMPLE:
+//   BatchOperationRequest batch = {
+//     operations: [
+//       {operation: OPERATION_CREATE, ...},
+//       {operation: OPERATION_UPDATE, ...},
+//     ],
+//     transactional: true,
+//     execution_mode: EXECUTION_MODE_PARALLEL
+//   };
+message BatchOperationRequest {
+  // Individual operations to execute.
+  // REQUIRED: Must contain at least one operation.
+  // Maximum batch size enforced by service configuration.
+  repeated OperationRequest operations = 1;
+
+  // Whether operations should be executed in a transaction.
+  // If true and any operation fails, all operations are rolled back.
+  // OPTIONAL: Default is false (best-effort execution).
+  // Note: Not all services support transactional batches.
+  bool transactional = 2;
+
+  // Whether to stop on first error.
+  // If true, remaining operations are skipped after first failure.
+  // OPTIONAL: Default is false (continue on error).
+  bool stop_on_error = 3;
+
+  // Overall timeout for the batch.
+  // Applied to entire batch execution, not individual operations.
+  // OPTIONAL: If not set, sum of individual operation timeouts applies.
+  google.protobuf.Duration timeout = 4;
+
+  // Execution mode for batch operations.
+  // Determines whether operations run sequentially or in parallel.
+  // OPTIONAL: Default is EXECUTION_MODE_SEQUENTIAL for safety.
+  ExecutionMode execution_mode = 5;
+
+  // Priority level for the entire batch.
+  // OPTIONAL: Used for queue-based batch processing systems.
+  int32 priority = 6;
+
+  // Unique identifier for this batch request.
+  // Used for idempotency and batch operation tracking.
+  string batch_id = 7;
+
+  // Maximum allowed failures before stopping.
+  // OPTIONAL: Only applicable when stop_on_error is false.
+  // If set, batch stops after this many failures.
+  int32 max_failures = 8;
+
+  // Batch-level metadata.
+  // Common keys: "source", "batch_type", "triggered_by"
+  map<string, string> metadata = 9;
+}
+
+// BatchOperationResponse represents the result of batch operation execution.
+//
+// USAGE:
+// - Return results for all operations in batch
+// - Provide aggregate statistics
+// - Support partial success scenarios
+// - Enable batch operation tracking
+//
+// EXAMPLE:
+//   BatchOperationResponse response = {
+//     batch_id: "batch-123-abc",
+//     operations: [...],
+//     status: STATUS_PARTIAL_SUCCESS,
+//     success_count: 8,
+//     failure_count: 2
+//   };
+message BatchOperationResponse {
+  // Unique identifier for this batch execution.
+  // Echoes batch_id from request or generated if not provided.
+  string batch_id = 1;
+
+  // Results for each operation in the batch.
+  // Order matches the request operations.
+  // Includes both successful and failed operations.
+  repeated OperationResponse operations = 2;
+
+  // Overall batch status.
+  // Uses Status enum from common.enums.
+  // SUCCESS: All operations succeeded.
+  // FAILURE: All operations failed.
+  // PARTIAL_SUCCESS: Some operations succeeded, some failed.
+  int32 status = 3;
+
+  // Total number of successful operations.
+  int32 success_count = 4;
+
+  // Total number of failed operations.
+  int32 failure_count = 5;
+
+  // Total number of skipped operations.
+  // Set when stop_on_error is true and operations were not attempted.
+  int32 skipped_count = 6;
+
+  // Total execution time for the batch.
+  // Includes overhead for batch coordination and scheduling.
+  google.protobuf.Duration total_duration = 7;
+
+  // Indicates if batch was executed transactionally.
+  bool transactional = 8;
+
+  // Indicates if transaction was rolled back due to failure.
+  // Only applicable when transactional is true.
+  bool rolled_back = 9;
+
+  // Batch-level warnings.
+  // Example: Performance degradation, partial resource availability.
+  repeated string warnings = 10;
+
+  // Aggregate statistics for the batch.
+  BatchStatistics statistics = 11;
+}
+
+// ExecutionMode defines how batch operations should be executed.
+enum ExecutionMode {
+  // Default/unspecified mode.
+  EXECUTION_MODE_UNSPECIFIED = 0;
+
+  // Execute operations one at a time in order.
+  // Safest mode, preserves operation dependencies.
+  EXECUTION_MODE_SEQUENTIAL = 10;
+
+  // Execute operations in parallel when possible.
+  // Faster but requires operations to be independent.
+  EXECUTION_MODE_PARALLEL = 20;
+
+  // Execute operations in optimal order based on dependencies.
+  // Service analyzes dependencies and determines execution plan.
+  EXECUTION_MODE_OPTIMIZED = 30;
+}
+
+// BatchStatistics provides aggregate metrics for batch execution.
+//
+// USAGE:
+// - Monitor batch performance
+// - Identify bottlenecks
+// - Track resource utilization
+message BatchStatistics {
+  // Average operation duration across all operations.
+  google.protobuf.Duration avg_operation_duration = 1;
+
+  // Minimum operation duration.
+  google.protobuf.Duration min_operation_duration = 2;
+
+  // Maximum operation duration.
+  google.protobuf.Duration max_operation_duration = 3;
+
+  // 50th percentile operation duration.
+  google.protobuf.Duration p50_operation_duration = 4;
+
+  // 95th percentile operation duration.
+  google.protobuf.Duration p95_operation_duration = 5;
+
+  // 99th percentile operation duration.
+  google.protobuf.Duration p99_operation_duration = 6;
+
+  // Total number of retries across all operations.
+  int32 total_retries = 7;
+
+  // Number of operations served from cache.
+  int32 cache_hits = 8;
+
+  // Breakdown of operations by type.
+  map<int32, int32> operation_type_counts = 9;
+
+  // Breakdown of failures by error code.
+  map<int32, int32> error_code_counts = 10;
+
+  // Total bytes processed (if applicable).
+  int64 total_bytes_processed = 11;
+
+  // Number of database queries executed.
+  int64 total_db_queries = 12;
+}

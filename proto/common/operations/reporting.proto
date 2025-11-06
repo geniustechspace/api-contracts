@@ -1,0 +1,561 @@
+syntax = "proto3";
+
+package geniustechspace.common.operations.v1;
+
+import "google/protobuf/timestamp.proto";
+import "google/protobuf/duration.proto";
+import "common/operations/types.proto";
+
+// =============================================================================
+// OPERATION REPORTING & ANALYTICS - v1.0.0
+// =============================================================================
+//
+// This file defines messages for operation reporting, metrics aggregation,
+// and analytics across the organizations platform.
+//
+// DESIGN PRINCIPLES:
+// - Provide comprehensive operation metrics
+// - Support SLA monitoring and performance tracking
+// - Enable capacity planning and optimization
+// - Facilitate compliance reporting
+//
+// VERSION HISTORY:
+// - 1.0.0 (2025-11-01): Initial enterprise-standard release
+//
+// COMPLIANCE SCOPE:
+// - SOC 2: Operational monitoring and incident response
+// - ISO 27001: Security metrics and KPIs
+// - SLA: Service level agreement tracking
+//
+// =============================================================================
+
+// Options for language-specific code generation and package mappings.
+option go_package = "github.com/geniustechspace/api-contracts/gen/go/common/operations/v1";
+option java_multiple_files = true;
+option java_package = "com.geniustechspace.api.common.operations.v1";
+option csharp_namespace = "GeniusTechSpace.Api.Common.Operations.V1";
+option php_namespace = "GeniusTechSpace\\Api\\Common\\Operations\\V1";
+option ruby_package = "GeniusTechSpace::Api::Common::Operations::V1";
+
+// =============================================================================
+// OPERATION REPORTS
+// =============================================================================
+
+// OperationReport provides aggregate statistics about operations over a time period.
+//
+// USAGE:
+// - Monitor operation patterns and performance
+// - Track success/failure rates for SLA compliance
+// - Identify performance bottlenecks and anomalies
+// - Support capacity planning and resource allocation
+//
+// EXAMPLE:
+//   OperationReport report = {
+//     operation: OPERATION_CREATE,
+//     resource_type: "user",
+//     total_count: 1000,
+//     success_count: 980,
+//     failure_count: 20,
+//     avg_duration: Duration(500ms)
+//   };
+message OperationReport {
+  // Unique identifier for this report.
+  string report_id = 1;
+
+  // Type of operation being reported on.
+  // OPTIONAL: Empty means aggregate across all operation types.
+  Operation operation = 2;
+
+  // Type of resource (if filtered by resource type).
+  // OPTIONAL: Empty means aggregate across all resource types.
+  string resource_type = 3;
+
+  // Time period start.
+  google.protobuf.Timestamp period_start = 4;
+
+  // Time period end.
+  google.protobuf.Timestamp period_end = 5;
+
+  // Total number of operations in this period.
+  int64 total_count = 6;
+
+  // Number of successful operations.
+  int64 success_count = 7;
+
+  // Number of failed operations.
+  int64 failure_count = 8;
+
+  // Number of operations still in progress (for async operations).
+  int64 pending_count = 9;
+
+  // Success rate percentage (0-100).
+  double success_rate = 10;
+
+  // Average operation duration.
+  google.protobuf.Duration avg_duration = 11;
+
+  // Minimum operation duration.
+  google.protobuf.Duration min_duration = 12;
+
+  // Maximum operation duration.
+  google.protobuf.Duration max_duration = 13;
+
+  // 50th percentile (median) duration.
+  google.protobuf.Duration p50_duration = 14;
+
+  // 90th percentile duration.
+  google.protobuf.Duration p90_duration = 15;
+
+  // 95th percentile duration.
+  google.protobuf.Duration p95_duration = 16;
+
+  // 99th percentile duration.
+  google.protobuf.Duration p99_duration = 17;
+
+  // 99.9th percentile duration.
+  google.protobuf.Duration p999_duration = 18;
+
+  // Breakdown of failures by error code.
+  // Key: error code, Value: count
+  map<int32, int64> error_code_counts = 19;
+
+  // Breakdown of operations by status.
+  // Key: status code, Value: count
+  map<int32, int64> status_counts = 20;
+
+  // Additional custom metrics.
+  // Example: {"cache_hit_rate": 0.85, "avg_payload_size": 1024}
+  map<string, double> custom_metrics = 21;
+
+  // Tenant/organization ID (if filtered).
+  // OPTIONAL: For multi-tenant reporting.
+  string tenant_id = 22;
+
+  // Service/component name (if filtered).
+  // OPTIONAL: For service-specific reporting.
+  string service_name = 23;
+
+  // Geographic region (if filtered).
+  // OPTIONAL: For region-specific reporting.
+  string region = 24;
+
+  // Time series data points (if requested).
+  // OPTIONAL: Provides granular time-based breakdown.
+  repeated TimeSeriesPoint time_series = 25;
+}
+
+// TimeSeriesPoint represents a single data point in a time series.
+message TimeSeriesPoint {
+  // Timestamp of this data point.
+  google.protobuf.Timestamp timestamp = 1;
+
+  // Operation count at this point.
+  int64 count = 2;
+
+  // Success count at this point.
+  int64 success_count = 3;
+
+  // Failure count at this point.
+  int64 failure_count = 4;
+
+  // Average duration at this point.
+  google.protobuf.Duration avg_duration = 5;
+
+  // p95 duration at this point.
+  google.protobuf.Duration p95_duration = 6;
+
+  // Custom metric values at this point.
+  map<string, double> metrics = 7;
+}
+
+// OperationSummary provides a high-level overview of operations.
+//
+// USAGE:
+// - Dashboard and overview displays
+// - Executive reporting
+// - Health checks and status pages
+message OperationSummary {
+  // Summary timestamp.
+  google.protobuf.Timestamp generated_at = 1;
+
+  // Total operations across all types.
+  int64 total_operations = 2;
+
+  // Total successful operations.
+  int64 total_success = 3;
+
+  // Total failed operations.
+  int64 total_failures = 4;
+
+  // Overall success rate percentage (0-100).
+  double overall_success_rate = 5;
+
+  // Average operation duration across all types.
+  google.protobuf.Duration avg_duration = 6;
+
+  // Top 5 most frequent operations.
+  repeated OperationFrequency top_operations = 7;
+
+  // Top 5 slowest operations.
+  repeated OperationPerformance slowest_operations = 8;
+
+  // Top 5 error codes.
+  repeated ErrorFrequency top_errors = 9;
+
+  // System health status.
+  HealthStatus health_status = 10;
+
+  // Active alerts or warnings.
+  repeated Alert active_alerts = 11;
+}
+
+// OperationFrequency tracks operation frequency statistics.
+message OperationFrequency {
+  // Operation type.
+  Operation operation = 1;
+
+  // Resource type.
+  string resource_type = 2;
+
+  // Number of occurrences.
+  int64 count = 3;
+
+  // Percentage of total operations.
+  double percentage = 4;
+}
+
+// OperationPerformance tracks operation performance statistics.
+message OperationPerformance {
+  // Operation type.
+  Operation operation = 1;
+
+  // Resource type.
+  string resource_type = 2;
+
+  // Average duration.
+  google.protobuf.Duration avg_duration = 3;
+
+  // p95 duration.
+  google.protobuf.Duration p95_duration = 4;
+
+  // p99 duration.
+  google.protobuf.Duration p99_duration = 5;
+}
+
+// ErrorFrequency tracks error occurrence statistics.
+message ErrorFrequency {
+  // Error code.
+  int32 error_code = 1;
+
+  // Error code name (for readability).
+  string error_name = 2;
+
+  // Number of occurrences.
+  int64 count = 3;
+
+  // Percentage of total errors.
+  double percentage = 4;
+
+  // Most affected operation types.
+  repeated Operation affected_operations = 5;
+}
+
+// HealthStatus represents overall system health.
+enum HealthStatus {
+  HEALTH_STATUS_UNSPECIFIED = 0;
+  HEALTH_STATUS_HEALTHY = 10;       // All systems operational
+  HEALTH_STATUS_DEGRADED = 20;      // Some performance issues
+  HEALTH_STATUS_UNHEALTHY = 30;     // Significant issues
+  HEALTH_STATUS_CRITICAL = 40;      // Service unavailable
+}
+
+// Alert represents an active alert or warning.
+message Alert {
+  // Alert identifier.
+  string alert_id = 1;
+
+  // Alert severity.
+  AlertSeverity severity = 2;
+
+  // Alert title/summary.
+  string title = 3;
+
+  // Alert description.
+  string description = 4;
+
+  // Timestamp when alert was triggered.
+  google.protobuf.Timestamp triggered_at = 5;
+
+  // Affected operation (if applicable).
+  Operation affected_operation = 6;
+
+  // Affected resource type (if applicable).
+  string affected_resource_type = 7;
+
+  // Alert metadata.
+  map<string, string> metadata = 8;
+}
+
+// AlertSeverity defines alert severity levels.
+enum AlertSeverity {
+  ALERT_SEVERITY_UNSPECIFIED = 0;
+  ALERT_SEVERITY_INFO = 10;         // Informational
+  ALERT_SEVERITY_WARNING = 20;      // Warning condition
+  ALERT_SEVERITY_ERROR = 30;        // Error condition
+  ALERT_SEVERITY_CRITICAL = 40;     // Critical condition
+}
+
+// =============================================================================
+// SLA & COMPLIANCE REPORTS
+// =============================================================================
+
+// SLAReport provides service level agreement compliance metrics.
+//
+// USAGE:
+// - Track SLA compliance
+// - Monitor service level objectives
+// - Support customer SLA reporting
+// - Identify SLA violations
+message SLAReport {
+  // Report identifier.
+  string report_id = 1;
+
+  // SLA name or identifier.
+  string sla_name = 2;
+
+  // Reporting period start.
+  google.protobuf.Timestamp period_start = 3;
+
+  // Reporting period end.
+  google.protobuf.Timestamp period_end = 4;
+
+  // SLA objectives and their compliance status.
+  repeated SLAObjective objectives = 5;
+
+  // Overall SLA compliance percentage (0-100).
+  double overall_compliance = 6;
+
+  // Indicates if SLA was met.
+  bool sla_met = 7;
+
+  // Number of SLA violations.
+  int32 violation_count = 8;
+
+  // SLA violation details.
+  repeated SLAViolation violations = 9;
+
+  // Tenant/organization ID.
+  string tenant_id = 10;
+
+  // Service/component name.
+  string service_name = 11;
+}
+
+// SLAObjective represents a single SLA objective.
+message SLAObjective {
+  // Objective name.
+  // Example: "availability", "latency_p95", "error_rate"
+  string name = 1;
+
+  // Objective description.
+  string description = 2;
+
+  // Target value for this objective.
+  // Example: 99.9 for 99.9% availability
+  double target_value = 3;
+
+  // Actual measured value.
+  double actual_value = 4;
+
+  // Unit of measurement.
+  // Example: "percentage", "milliseconds", "count"
+  string unit = 5;
+
+  // Indicates if objective was met.
+  bool met = 6;
+
+  // Difference from target (actual - target).
+  double delta = 7;
+}
+
+// SLAViolation represents a specific SLA violation.
+message SLAViolation {
+  // Violation identifier.
+  string violation_id = 1;
+
+  // Objective that was violated.
+  string objective_name = 2;
+
+  // Timestamp when violation occurred.
+  google.protobuf.Timestamp occurred_at = 3;
+
+  // Duration of the violation.
+  google.protobuf.Duration duration = 4;
+
+  // Severity of the violation.
+  ViolationSeverity severity = 5;
+
+  // Impact description.
+  string impact = 6;
+
+  // Root cause (if identified).
+  string root_cause = 7;
+
+  // Resolution description.
+  string resolution = 8;
+
+  // Timestamp when violation was resolved.
+  google.protobuf.Timestamp resolved_at = 9;
+}
+
+// ViolationSeverity defines SLA violation severity levels.
+enum ViolationSeverity {
+  VIOLATION_SEVERITY_UNSPECIFIED = 0;
+  VIOLATION_SEVERITY_MINOR = 10;        // Minor breach, minimal impact
+  VIOLATION_SEVERITY_MODERATE = 20;     // Moderate breach, noticeable impact
+  VIOLATION_SEVERITY_MAJOR = 30;        // Major breach, significant impact
+  VIOLATION_SEVERITY_CRITICAL = 40;     // Critical breach, severe impact
+}
+
+// ComplianceReport provides compliance-specific operational metrics.
+//
+// USAGE:
+// - Support SOC 2, ISO 27001, GDPR compliance
+// - Track data processing activities
+// - Monitor access controls
+// - Generate compliance evidence
+message ComplianceReport {
+  // Report identifier.
+  string report_id = 1;
+
+  // Compliance framework.
+  // Example: "SOC2", "ISO27001", "GDPR", "HIPAA"
+  string compliance_framework = 2;
+
+  // Reporting period start.
+  google.protobuf.Timestamp period_start = 3;
+
+  // Reporting period end.
+  google.protobuf.Timestamp period_end = 4;
+
+  // Total operations audited.
+  int64 total_operations = 5;
+
+  // Operations accessing sensitive data.
+  int64 sensitive_data_operations = 6;
+
+  // Failed authentication attempts.
+  int64 failed_auth_attempts = 7;
+
+  // Elevated privilege operations.
+  int64 elevated_privilege_operations = 8;
+
+  // Data export operations.
+  int64 export_operations = 9;
+
+  // Data deletion operations.
+  int64 deletion_operations = 10;
+
+  // Compliance violations detected.
+  int64 compliance_violations = 11;
+
+  // Compliance violation details.
+  repeated ComplianceViolation violations = 12;
+
+  // Access patterns analysis.
+  AccessPatterns access_patterns = 13;
+
+  // Data retention compliance.
+  DataRetentionStatus retention_status = 14;
+}
+
+// ComplianceViolation represents a compliance policy violation.
+message ComplianceViolation {
+  // Violation identifier.
+  string violation_id = 1;
+
+  // Compliance policy violated.
+  string policy_name = 2;
+
+  // Operation that caused violation.
+  string operation_id = 3;
+
+  // Actor who caused violation.
+  string actor_id = 4;
+
+  // Timestamp of violation.
+  google.protobuf.Timestamp occurred_at = 5;
+
+  // Violation description.
+  string description = 6;
+
+  // Remediation status.
+  RemediationStatus remediation_status = 7;
+}
+
+// RemediationStatus tracks violation remediation.
+enum RemediationStatus {
+  REMEDIATION_STATUS_UNSPECIFIED = 0;
+  REMEDIATION_STATUS_PENDING = 10;      // Not yet addressed
+  REMEDIATION_STATUS_IN_PROGRESS = 20;  // Being remediated
+  REMEDIATION_STATUS_RESOLVED = 30;     // Successfully resolved
+  REMEDIATION_STATUS_ACCEPTED = 40;     // Risk accepted, not remediated
+}
+
+// AccessPatterns analyzes access patterns for anomaly detection.
+message AccessPatterns {
+  // Unique users/actors.
+  int64 unique_actors = 1;
+
+  // Peak concurrent operations.
+  int64 peak_concurrent_operations = 2;
+
+  // Peak operations per hour.
+  int64 peak_operations_per_hour = 3;
+
+  // Unusual access detected.
+  int64 anomalous_access_count = 4;
+
+  // Anomalous access details.
+  repeated AccessAnomaly anomalies = 5;
+}
+
+// AccessAnomaly represents unusual access pattern.
+message AccessAnomaly {
+  // Anomaly identifier.
+  string anomaly_id = 1;
+
+  // Anomaly type.
+  // Example: "unusual_time", "unusual_volume", "unusual_location"
+  string anomaly_type = 2;
+
+  // Actor involved.
+  string actor_id = 3;
+
+  // Timestamp.
+  google.protobuf.Timestamp detected_at = 4;
+
+  // Anomaly description.
+  string description = 5;
+
+  // Risk score (0-100).
+  int32 risk_score = 6;
+}
+
+// DataRetentionStatus tracks data retention compliance.
+message DataRetentionStatus {
+  // Total records subject to retention.
+  int64 total_records = 1;
+
+  // Records within retention period.
+  int64 compliant_records = 2;
+
+  // Records pending deletion.
+  int64 pending_deletion = 3;
+
+  // Records overdue for deletion.
+  int64 overdue_deletion = 4;
+
+  // Retention policies applied.
+  repeated string applied_policies = 5;
+}

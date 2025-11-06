@@ -1,0 +1,141 @@
+syntax = "proto3";
+
+package geniustechspace.common.operations.v1;
+
+import "google/protobuf/duration.proto";
+import "google/protobuf/any.proto";
+import "common/operations/types.proto";
+
+// =============================================================================
+// OPERATION REQUEST MESSAGES - v1.0.0
+// =============================================================================
+//
+// This file defines standardized request envelopes for operation execution
+// across the organizations platform.
+//
+// DESIGN PRINCIPLES:
+// - Provide consistent request structure for all operations
+// - Enable idempotency and distributed tracing
+// - Support authorization and audit requirements
+// - Include comprehensive metadata for compliance
+//
+// VERSION HISTORY:
+// - 1.0.0 (2025-11-01): Initial enterprise-standard release
+//
+// COMPLIANCE SCOPE:
+// - SOC 2: Request tracking and audit trail
+// - ISO 27001: Access control and authorization
+// - GDPR: Data processing documentation
+//
+// =============================================================================
+
+// Options for language-specific code generation and package mappings.
+option go_package = "github.com/geniustechspace/api-contracts/gen/go/common/operations/v1";
+option java_multiple_files = true;
+option java_package = "com.geniustechspace.api.common.operations.v1";
+option csharp_namespace = "GeniusTechSpace.Api.Common.Operations.V1";
+option php_namespace = "GeniusTechSpace\\Api\\Common\\Operations\\V1";
+option ruby_package = "GeniusTechSpace::Api::Common::Operations::V1";
+
+// =============================================================================
+// OPERATION REQUEST
+// =============================================================================
+
+// OperationRequest represents a standardized request envelope for executing
+// an operation on a resource.
+//
+// USAGE:
+// - Wrap service-specific requests with operation metadata
+// - Enable consistent authorization and audit logging
+// - Support idempotency and request tracking
+// - Provide context for distributed tracing
+//
+// SECURITY:
+// - actor_id must be validated before operation execution
+// - Authorization checks performed based on operation type
+// - IP address and user agent tracked for security monitoring
+//
+// COMPLIANCE:
+// - All fields logged for audit purposes
+// - Idempotency key prevents duplicate processing
+// - Correlation ID enables request lineage tracking
+//
+// EXAMPLE:
+//   OperationRequest request = {
+//     operation: OPERATION_CREATE,
+//     resource_type: "user",
+//     idempotency_key: "req-123-abc",
+//     actor_id: "user-456",
+//     request_data: Any(CreateUserRequest {...})
+//   };
+message OperationRequest {
+  // Type of operation being requested.
+  // REQUIRED: Must be explicitly set (not UNSPECIFIED).
+  // Used for authorization policy enforcement and audit logging.
+  Operation operation = 1;
+
+  // Type of resource the operation is targeting (e.g., "user", "order").
+  // REQUIRED: Used for authorization and audit logging.
+  // Should match resource naming convention in your platform.
+  string resource_type = 2;
+
+  // Unique identifier of the resource (for READ, UPDATE, DELETE operations).
+  // OPTIONAL: Not required for CREATE or LIST operations.
+  // REQUIRED: For operations targeting specific resources.
+  string resource_id = 3;
+
+  // Idempotency key to prevent duplicate operations.
+  // RECOMMENDED: Use for CREATE, UPDATE, DELETE operations.
+  // Format: UUID or client-generated unique string.
+  // Server should cache operation results by this key.
+  string idempotency_key = 4;
+
+  // Actor (user/service) performing the operation.
+  // REQUIRED: For audit logging and authorization.
+  // Format: User ID, service account ID, or API key identifier.
+  string actor_id = 5;
+
+  // Client-provided correlation ID for distributed tracing.
+  // OPTIONAL: Used to track requests across services.
+  // Automatically propagated to downstream services.
+  string correlation_id = 6;
+
+  // Service-specific request payload.
+  // Type should match the operation and resource type.
+  // Contains the actual business logic request data.
+  google.protobuf.Any request_data = 7;
+
+  // Additional metadata for the operation (e.g., source IP, user agent).
+  // OPTIONAL: Used for security monitoring and compliance.
+  // Common keys: "ip_address", "user_agent", "client_version"
+  map<string, string> metadata = 8;
+
+  // Requested timeout for the operation.
+  // OPTIONAL: If not set, service default timeout applies.
+  // Server may enforce maximum timeout limits.
+  google.protobuf.Duration timeout = 9;
+
+  // Tenant/organization ID for multi-tenant systems.
+  // OPTIONAL: Used for data isolation and resource scoping.
+  // Essential for multi-tenant authorization and billing.
+  string tenant_id = 10;
+
+  // Authorization token or credentials.
+  // OPTIONAL: May be required depending on authentication method.
+  // Should be validated before processing the request.
+  string auth_token = 11;
+
+  // Request priority level for queue-based processing.
+  // OPTIONAL: Used for prioritization in async operation systems.
+  // Values: LOW (0), NORMAL (1), HIGH (2), CRITICAL (3)
+  int32 priority = 12;
+
+  // Dry-run mode flag.
+  // OPTIONAL: If true, validate request but don't execute operation.
+  // Useful for permission checks and validation testing.
+  bool dry_run = 13;
+
+  // Client context information.
+  // OPTIONAL: Additional context about the client making the request.
+  ClientContext client_context = 14;
+}

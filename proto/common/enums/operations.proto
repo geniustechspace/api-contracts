@@ -1,0 +1,701 @@
+syntax = "proto3";
+
+package geniustechspace.common.v1;
+
+// =============================================================================
+// OPERATIONS ENUMS - v1.0.0
+// =============================================================================
+//
+// Status tracking and error classification for operation outcomes.
+//
+// COMPLIANCE SCOPE:
+// - SOC 2 Type II: Operational monitoring and incident response
+// - ISO 27001: Security event logging and classification
+// - GDPR: Error handling and data protection
+// - PCI DSS: Payment-related error tracking
+//
+// =============================================================================
+
+// Language-specific code generation options
+option go_package = "github.com/geniustechspace/api-contracts/gen/go/common/v1";
+option java_multiple_files = true;
+option java_package = "com.geniustechspace.api.common.v1";
+
+// =============================================================================
+// OPERATION STATUS
+// =============================================================================
+
+// Status represents the high-level outcome of an operation, workflow, or request.
+//
+// USAGE GUIDANCE:
+// - Use in response envelopes (ApiResponse, OperationResult)
+// - Include in audit logs for compliance tracking
+// - Map to HTTP status codes in gateway layer
+// - Use for workflow state machines and orchestration
+//
+// COMPLIANCE NOTES:
+// - SOC 2: Essential for operational monitoring and incident response
+// - ISO 27001: Required for security event logging (A.12.4)
+//
+// RELATED ENUMS:
+// - ErrorCode: For detailed error classification
+// - LifecycleState: For resource state management
+// - Severity: For log level classification
+enum Status {
+  // Default/uninitialized value. Should never be explicitly set.
+  // REQUIRED: proto3 best practice for enum zero value.
+  STATUS_UNSPECIFIED = 0;
+
+  // Operation completed successfully with all objectives met.
+  // HTTP: 200 OK, 201 Created, 204 No Content
+  STATUS_SUCCESS = 10;
+
+  // Operation failed irrecoverably. Manual intervention may be required.
+  // HTTP: 400 Bad Request, 500 Internal Server Error
+  STATUS_FAILURE = 20;
+
+  // Operation completed but some sub-operations failed.
+  // USAGE: Bulk operations, multi-step workflows
+  // HTTP: 207 Multi-Status
+  STATUS_PARTIAL_SUCCESS = 30;
+
+  // Operation in progress, result not yet available.
+  // USAGE: Long-running operations, async processing
+  // HTTP: 202 Accepted
+  STATUS_PENDING = 40;
+
+  // Operation being retried due to transient failure.
+  // USAGE: Resilience patterns, circuit breakers
+  // COMPLIANCE: Required for SLA tracking
+  STATUS_RETRYING = 50;
+
+  // Operation canceled by user or system before completion.
+  // USAGE: Graceful shutdown, user-initiated cancellation
+  // HTTP: 499 Client Closed Request
+  STATUS_CANCELED = 60;
+
+  // Operation exceeded configured timeout threshold.
+  // COMPLIANCE: SLA violation tracking
+  // HTTP: 408 Request Timeout, 504 Gateway Timeout
+  STATUS_TIMEOUT = 70;
+
+  // Operation waiting in queue for execution.
+  // USAGE: Rate limiting, capacity management
+  // HTTP: 202 Accepted
+  STATUS_QUEUED = 80;
+
+  // Execution intentionally deferred per business policy.
+  // USAGE: Scheduled operations, throttling
+  STATUS_DEFERRED = 90;
+
+  // Operation step skipped due to conditional logic.
+  // USAGE: Workflow orchestration, feature flags
+  STATUS_SKIPPED = 100;
+
+  // Reserved for future status values
+  reserved 110 to 9999;
+}
+
+// =============================================================================
+// ERROR CODES
+// =============================================================================
+
+// ErrorCode provides standardized, machine-readable error classification
+// across all services and domains.
+//
+// USAGE GUIDANCE:
+// - Use for programmatic error handling in clients
+// - Map to localized user-facing messages in UI layer
+// - Include in error responses with additional context
+// - Log with telemetry for observability
+//
+// STRUCTURE:
+// - Grouped by domain in ranges of ~200 codes
+// - 10-point spacing within groups for extensibility
+// - Never reuse deprecated codes
+//
+// COMPLIANCE REQUIREMENTS:
+// - GDPR: Errors related to data subject rights (800-999)
+// - PCI DSS: Payment-related errors with security context
+// - SOC 2: All error codes logged for audit trail
+// - ISO 27001: Security incident classification
+//
+// HTTP STATUS MAPPING:
+// - 10-199 (Auth): 401, 403, 423, 429
+// - 200-399 (Validation): 400, 404, 409, 412, 413, 422
+// - 400-599 (Infrastructure): 500, 502, 503, 504
+// - 600-799 (Business): 402, 403, 451
+// - 800-999 (Privacy): 403, 451
+//
+// RELATED ENUMS:
+// - Status: High-level operation outcome
+// - Severity: Error criticality for alerting
+enum ErrorCode {
+  // Default/uninitialized value. Never explicitly return this code.
+  ERROR_CODE_UNSPECIFIED = 0;
+
+  // =============================================================================
+  // AUTHENTICATION & IDENTITY ERRORS (10-199)
+  // Security-related authentication and authorization failures.
+  // COMPLIANCE: ISO 27001 A.9 (Access Control), SOC 2 CC6.1
+  // =============================================================================
+
+  // Provided credentials (username/password) are invalid.
+  // HTTP: 401 Unauthorized
+  // AUDIT: Log failed attempt with IP, timestamp for security monitoring
+  ERROR_CODE_INVALID_CREDENTIALS = 10;
+
+  // User account does not exist in the system.
+  // HTTP: 404 Not Found (or 401 to prevent enumeration)
+  // SECURITY: Consider using generic message to prevent user enumeration
+  ERROR_CODE_USER_NOT_FOUND = 20;
+
+  // User registration failed due to existing account.
+  // HTTP: 409 Conflict
+  ERROR_CODE_USER_ALREADY_EXISTS = 30;
+
+  // Token (JWT, OAuth, API key) is malformed or invalid.
+  // HTTP: 401 Unauthorized
+  // SECURITY: Log token type and expiry for forensics
+  ERROR_CODE_INVALID_TOKEN = 40;
+
+  // Token has exceeded its validity period.
+  // HTTP: 401 Unauthorized
+  // CLIENT ACTION: Refresh token or re-authenticate
+  ERROR_CODE_EXPIRED_TOKEN = 50;
+
+  // Account locked due to too many failed authentication attempts.
+  // HTTP: 423 Locked
+  // COMPLIANCE: Required for SOC 2, ISO 27001 access control
+  // SECURITY: Implement exponential backoff, notify user via email
+  ERROR_CODE_ACCOUNT_LOCKED = 60;
+
+  // Account suspended by administrator or automated policy.
+  // HTTP: 403 Forbidden
+  // AUDIT: Must log suspension reason and administrator identity
+  ERROR_CODE_ACCOUNT_SUSPENDED = 70;
+
+  // Multi-factor authentication challenge required.
+  // HTTP: 403 Forbidden (with MFA challenge in response)
+  // CLIENT ACTION: Prompt user for MFA code
+  ERROR_CODE_MFA_REQUIRED = 80;
+
+  // Provided MFA code is incorrect or expired.
+  // HTTP: 401 Unauthorized
+  // SECURITY: Rate limit MFA attempts to prevent brute force
+  ERROR_CODE_INVALID_MFA_CODE = 90;
+
+  // Password does not meet security policy requirements.
+  // HTTP: 422 Unprocessable Entity
+  // CLIENT ACTION: Display policy requirements (min length, complexity)
+  ERROR_CODE_WEAK_PASSWORD = 100;
+
+  // Request rate limit exceeded for this client/endpoint.
+  // HTTP: 429 Too Many Requests
+  // HEADERS: Include Retry-After header with backoff period
+  // COMPLIANCE: Required for DoS protection (ISO 27001)
+  ERROR_CODE_RATE_LIMIT_EXCEEDED = 110;
+
+  // User lacks required privileges for this operation.
+  // HTTP: 403 Forbidden
+  // AUDIT: Log unauthorized access attempts
+  ERROR_CODE_UNAUTHORIZED = 120;
+
+  // Access explicitly denied by policy or ACL.
+  // HTTP: 403 Forbidden
+  // USAGE: Differentiate from UNAUTHORIZED (permission vs. policy)
+  ERROR_CODE_FORBIDDEN = 130;
+
+  // User session is no longer valid.
+  // HTTP: 401 Unauthorized
+  // CLIENT ACTION: Redirect to login
+  ERROR_CODE_SESSION_EXPIRED = 140;
+
+  // OAuth scope is invalid or not granted.
+  // HTTP: 403 Forbidden
+  // COMPLIANCE: OAuth 2.0 RFC 6749
+  ERROR_CODE_INVALID_SCOPE = 150;
+
+  // User consent required for data access.
+  // HTTP: 403 Forbidden
+  // COMPLIANCE: GDPR Article 6 (lawful basis for processing)
+  ERROR_CODE_CONSENT_REQUIRED = 160;
+
+  // External identity provider (SSO, SAML) failure.
+  // HTTP: 502 Bad Gateway
+  // MONITORING: Alert on repeated failures
+  ERROR_CODE_IDENTITY_PROVIDER_ERROR = 170;
+
+  // Biometric authentication (fingerprint, face) failed.
+  // HTTP: 401 Unauthorized
+  ERROR_CODE_BIOMETRIC_FAILURE = 180;
+
+  // Request originates from untrusted device.
+  // HTTP: 403 Forbidden
+  // SECURITY: Implement device fingerprinting and trust list
+  ERROR_CODE_DEVICE_NOT_TRUSTED = 190;
+
+  // =============================================================================
+  // DATA VALIDATION & REQUEST ERRORS (200-399)
+  // Client-side validation failures and request malformation.
+  // COMPLIANCE: Input validation required for SOC 2, ISO 27001 A.14
+  // =============================================================================
+
+  // Request parameter is invalid or malformed.
+  // HTTP: 400 Bad Request
+  // CLIENT ACTION: Fix parameter and retry
+  ERROR_CODE_INVALID_ARGUMENT = 200;
+
+  // Required field is missing from request.
+  // HTTP: 400 Bad Request
+  // RESPONSE: Include list of missing fields
+  ERROR_CODE_MISSING_REQUIRED_FIELD = 210;
+
+  // Operation conflicts with current resource state.
+  // HTTP: 409 Conflict
+  // EXAMPLE: Concurrent modification, duplicate operation
+  ERROR_CODE_CONFLICT = 220;
+
+  // Requested resource does not exist.
+  // HTTP: 404 Not Found
+  ERROR_CODE_NOT_FOUND = 230;
+
+  // Precondition failed (stale version, ETag mismatch).
+  // HTTP: 412 Precondition Failed
+  // USAGE: Optimistic locking, version control
+  // CLIENT ACTION: Fetch latest version and retry
+  ERROR_CODE_PRECONDITION_FAILED = 240;
+
+  // Request payload exceeds allowed size limit.
+  // HTTP: 413 Payload Too Large
+  // RESPONSE: Include max allowed size
+  // COMPLIANCE: DoS protection requirement
+  ERROR_CODE_PAYLOAD_TOO_LARGE = 250;
+
+  // Requested operation not supported by this resource/version.
+  // HTTP: 405 Method Not Allowed
+  ERROR_CODE_UNSUPPORTED_OPERATION = 260;
+
+  // Downstream dependency failed or unavailable.
+  // HTTP: 424 Failed Dependency
+  // MONITORING: Alert on cascading failures
+  ERROR_CODE_DEPENDENCY_FAILURE = 270;
+
+  // Duplicate entry violates unique constraint.
+  // HTTP: 409 Conflict
+  // DATABASE: Unique key, primary key violation
+  ERROR_CODE_DUPLICATE_ENTRY = 280;
+
+  // Resource is in invalid state for requested operation.
+  // HTTP: 422 Unprocessable Entity
+  // EXAMPLE: Cannot delete published content, must unpublish first
+  ERROR_CODE_INVALID_STATE = 290;
+
+  // Value is outside acceptable range.
+  // HTTP: 400 Bad Request
+  // RESPONSE: Include valid range bounds
+  ERROR_CODE_OUT_OF_RANGE = 300;
+
+  // Request syntax is malformed (e.g., invalid JSON, protobuf).
+  // HTTP: 400 Bad Request
+  ERROR_CODE_MALFORMED_REQUEST = 310;
+
+  // Content-Type header not supported by endpoint.
+  // HTTP: 415 Unsupported Media Type
+  // RESPONSE: Include list of supported types
+  ERROR_CODE_UNSUPPORTED_MEDIA_TYPE = 320;
+
+  // Data integrity check failed (checksum, hash mismatch).
+  // HTTP: 422 Unprocessable Entity
+  // USAGE: File uploads, data transmission
+  // SECURITY: May indicate corruption or tampering
+  ERROR_CODE_CHECKSUM_MISMATCH = 330;
+
+  // Data violates schema definition or constraints.
+  // HTTP: 422 Unprocessable Entity
+  // USAGE: JSON Schema, OpenAPI validation
+  ERROR_CODE_SCHEMA_VIOLATION = 340;
+
+  // Circular reference detected in data structure.
+  // HTTP: 422 Unprocessable Entity
+  // EXAMPLE: Parent-child relationships, dependency graphs
+  ERROR_CODE_CIRCULAR_DEPENDENCY = 350;
+
+  // Query filter expression is malformed or invalid.
+  // HTTP: 400 Bad Request
+  // RESPONSE: Include filter syntax documentation
+  ERROR_CODE_INVALID_FILTER = 360;
+
+  // Sort parameter is invalid or unsupported.
+  // HTTP: 400 Bad Request
+  // RESPONSE: Include list of sortable fields
+  ERROR_CODE_INVALID_SORT = 370;
+
+  // Batch request size exceeds limit.
+  // HTTP: 400 Bad Request
+  // RESPONSE: Include max batch size
+  ERROR_CODE_TOO_MANY_REQUESTS = 380;
+
+  // Resource with same identifier already exists.
+  // HTTP: 409 Conflict
+  ERROR_CODE_ALREADY_EXISTS = 390;
+
+  // =============================================================================
+  // INFRASTRUCTURE & PLATFORM ERRORS (400-599)
+  // Server-side, system-level, and infrastructure failures.
+  // COMPLIANCE: Required for incident response (SOC 2 CC7.3)
+  // =============================================================================
+
+  // Unexpected internal server error occurred.
+  // HTTP: 500 Internal Server Error
+  // MONITORING: Generate incident alert
+  // AUDIT: Log full stack trace for debugging
+  // SECURITY: Never expose internal details to clients
+  ERROR_CODE_INTERNAL_ERROR = 400;
+
+  // Backend dependency temporarily unavailable.
+  // HTTP: 503 Service Unavailable
+  // HEADERS: Include Retry-After
+  // MONITORING: Check cascading failures
+  ERROR_CODE_BACKEND_UNAVAILABLE = 410;
+
+  // Operation exceeded configured timeout.
+  // HTTP: 504 Gateway Timeout
+  // COMPLIANCE: SLA tracking required
+  ERROR_CODE_TIMEOUT = 420;
+
+  // Database or object storage system failure.
+  // HTTP: 500 Internal Server Error
+  // MONITORING: Critical alert, check replication
+  // COMPLIANCE: May trigger data integrity review
+  ERROR_CODE_STORAGE_ERROR = 430;
+
+  // Network communication failure.
+  // HTTP: 500 Internal Server Error
+  // MONITORING: Check network partitions, DNS
+  ERROR_CODE_NETWORK_ERROR = 440;
+
+  // System misconfiguration detected.
+  // HTTP: 500 Internal Server Error
+  // SECURITY: May indicate unauthorized changes
+  // INCIDENT: Requires root cause analysis
+  ERROR_CODE_CONFIG_ERROR = 450;
+
+  // Encryption/decryption or key management failure.
+  // HTTP: 500 Internal Server Error
+  // SECURITY: Critical security incident
+  // COMPLIANCE: May trigger breach notification
+  // AUDIT: Log key identifier, operation type
+  ERROR_CODE_ENCRYPTION_ERROR = 460;
+
+  // File system or I/O operation failed.
+  // HTTP: 500 Internal Server Error
+  // MONITORING: Check disk space, permissions
+  ERROR_CODE_IO_ERROR = 470;
+
+  // Expected cache entry not found (informational).
+  // HTTP: N/A (internal only)
+  // USAGE: Cache warming, performance optimization
+  ERROR_CODE_CACHE_MISS = 480;
+
+  // Feature is administratively disabled or behind feature flag.
+  // HTTP: 403 Forbidden
+  // RESPONSE: Include feature name and re-enable instructions
+  ERROR_CODE_FEATURE_DISABLED = 490;
+
+  // Operation not permitted by current license terms.
+  // HTTP: 402 Payment Required
+  // RESPONSE: Include upgrade path information
+  ERROR_CODE_LICENSE_VIOLATION = 500;
+
+  // Database connection could not be established.
+  // HTTP: 503 Service Unavailable
+  // MONITORING: Critical infrastructure alert
+  // SLA: Typically triggers immediate escalation
+  ERROR_CODE_DATABASE_CONNECTION_FAILED = 510;
+
+  // Message queue (Kafka, RabbitMQ) operation failed.
+  // HTTP: 500 Internal Server Error
+  // MONITORING: Check broker health, topic configuration
+  ERROR_CODE_MESSAGE_QUEUE_ERROR = 520;
+
+  // Distributed lock acquisition failed or timed out.
+  // HTTP: 409 Conflict or 503 Service Unavailable
+  // USAGE: Consensus algorithms, leader election
+  ERROR_CODE_DISTRIBUTED_LOCK_FAILED = 530;
+
+  // Circuit breaker open, preventing calls to failing service.
+  // HTTP: 503 Service Unavailable
+  // HEADERS: Include Retry-After
+  // PATTERN: Resilience, fail-fast
+  ERROR_CODE_CIRCUIT_BREAKER_OPEN = 540;
+
+  // Service operating in degraded mode with reduced capacity.
+  // HTTP: 200 OK (with warning header)
+  // MONITORING: Monitor recovery progress
+  // COMPLIANCE: May affect SLA commitments
+  ERROR_CODE_SERVICE_DEGRADED = 550;
+
+  // System in maintenance mode, unavailable for operations.
+  // HTTP: 503 Service Unavailable
+  // HEADERS: Retry-After with maintenance window end time
+  // COMMUNICATION: Notify users in advance per SLA
+  ERROR_CODE_MAINTENANCE_MODE = 560;
+
+  // Database replication lag exceeds acceptable threshold.
+  // HTTP: 503 Service Unavailable (for read-after-write)
+  // MONITORING: Track replication lag metrics
+  // USAGE: Multi-region deployments, read replicas
+  ERROR_CODE_REPLICATION_LAG = 570;
+
+  // Backup operation failed.
+  // HTTP: 500 Internal Server Error
+  // COMPLIANCE: Critical for disaster recovery (SOC 2, ISO 27001)
+  // INCIDENT: Requires immediate investigation
+  ERROR_CODE_BACKUP_FAILED = 580;
+
+  // Database schema migration failed.
+  // HTTP: 500 Internal Server Error
+  // DEPLOYMENT: Triggers rollback procedures
+  // MONITORING: Critical deployment alert
+  ERROR_CODE_MIGRATION_FAILED = 590;
+
+  // =============================================================================
+  // BUSINESS LOGIC & WORKFLOW ERRORS (600-799)
+  // Domain-specific business rule violations and workflow constraints.
+  // COMPLIANCE: Business logic validation (SOC 2 CC6.6)
+  // =============================================================================
+
+  // Payment or subscription required to access resource.
+  // HTTP: 402 Payment Required
+  // RESPONSE: Include pricing information and purchase URLs
+  // USAGE: Freemium models, pay-per-use APIs
+  ERROR_CODE_PAYMENT_REQUIRED = 600;
+
+  // Operation violates organizational or compliance policy.
+  // HTTP: 403 Forbidden
+  // AUDIT: Log policy name and violation details
+  // COMPLIANCE: Required for policy enforcement tracking
+  ERROR_CODE_POLICY_VIOLATION = 610;
+
+  // Resource quota or limit exceeded.
+  // HTTP: 429 Too Many Requests
+  // RESPONSE: Include current usage, limit, and reset time
+  // USAGE: API rate limits, storage quotas, user limits
+  ERROR_CODE_QUOTA_EXCEEDED = 620;
+
+  // Concurrent workflow already in progress.
+  // HTTP: 409 Conflict
+  // USAGE: Prevent duplicate long-running operations
+  ERROR_CODE_WORKFLOW_CONFLICT = 630;
+
+  // Operation requires approval from higher authority.
+  // HTTP: 403 Forbidden
+  // RESPONSE: Include approval process details
+  // COMPLIANCE: Required for segregation of duties (SOC 2)
+  ERROR_CODE_APPROVAL_REQUIRED = 640;
+
+  // Required dependency or prerequisite not satisfied.
+  // HTTP: 424 Failed Dependency
+  // EXAMPLE: Missing configuration, incomplete setup
+  ERROR_CODE_DEPENDENCY_UNSATISFIED = 650;
+
+  // Operation not supported for this resource type or tier.
+  // HTTP: 405 Method Not Allowed
+  // USAGE: Feature availability by subscription tier
+  ERROR_CODE_OPERATION_NOT_SUPPORTED = 660;
+
+  // External partner or integration system failure.
+  // HTTP: 502 Bad Gateway
+  // MONITORING: Alert on partner SLA violations
+  // ESCALATION: May require vendor engagement
+  ERROR_CODE_EXTERNAL_SYSTEM_FAILURE = 670;
+
+  // Account balance insufficient for transaction.
+  // HTTP: 402 Payment Required
+  // COMPLIANCE: PCI DSS for payment systems
+  // RESPONSE: Include current balance and required amount
+  ERROR_CODE_INSUFFICIENT_BALANCE = 680;
+
+  // Payment transaction declined by processor or bank.
+  // HTTP: 402 Payment Required
+  // COMPLIANCE: PCI DSS, payment card regulations
+  // RESPONSE: Include decline reason if available
+  // AUDIT: Log attempt without exposing card details
+  ERROR_CODE_TRANSACTION_DECLINED = 690;
+
+  // User subscription has expired or is inactive.
+  // HTTP: 402 Payment Required
+  // RESPONSE: Include renewal instructions
+  ERROR_CODE_SUBSCRIPTION_EXPIRED = 700;
+
+  // Trial period has ended, upgrade required.
+  // HTTP: 402 Payment Required
+  // RESPONSE: Include upgrade options and pricing
+  ERROR_CODE_TRIAL_EXPIRED = 710;
+
+  // Request originates from geographically restricted region.
+  // HTTP: 451 Unavailable For Legal Reasons
+  // COMPLIANCE: Export controls, sanctions (OFAC)
+  // AUDIT: Log attempt with geolocation data
+  ERROR_CODE_GEOFENCING_VIOLATION = 720;
+
+  // Operation violates regulatory compliance requirement.
+  // HTTP: 403 Forbidden
+  // COMPLIANCE: GDPR, HIPAA, SOX, etc.
+  // AUDIT: Mandatory logging with compliance framework reference
+  // INCIDENT: May require regulatory notification
+  ERROR_CODE_COMPLIANCE_VIOLATION = 730;
+
+  // Service level agreement threshold breached.
+  // HTTP: 503 Service Unavailable
+  // MONITORING: Escalate to SRE team
+  // BUSINESS: May trigger SLA credits or penalties
+  ERROR_CODE_SLA_VIOLATION = 740;
+
+  // System at maximum capacity, cannot accept request.
+  // HTTP: 503 Service Unavailable
+  // HEADERS: Retry-After
+  // MONITORING: Trigger auto-scaling if configured
+  ERROR_CODE_CAPACITY_EXCEEDED = 750;
+
+  // Entity (user, IP, domain) is on security blacklist.
+  // HTTP: 403 Forbidden
+  // SECURITY: Log blacklist category and reason
+  // USAGE: Fraud prevention, abuse mitigation
+  ERROR_CODE_BLACKLIST_VIOLATION = 760;
+
+  // User fails age verification requirement.
+  // HTTP: 403 Forbidden
+  // COMPLIANCE: COPPA (children under 13), age-restricted content
+  // PRIVACY: Minimize data collection for age verification
+  ERROR_CODE_AGE_RESTRICTION = 770;
+
+  // Content not available in user's geographic region.
+  // HTTP: 451 Unavailable For Legal Reasons
+  // USAGE: Geo-restricted content, licensing agreements
+  ERROR_CODE_TERRITORY_RESTRICTION = 780;
+
+  // Operation violates contractual terms.
+  // HTTP: 403 Forbidden
+  // LEGAL: Log contract reference and violation type
+  // USAGE: Partner agreements, service terms
+  ERROR_CODE_CONTRACT_VIOLATION = 790;
+
+  // =============================================================================
+  // DATA PROTECTION & PRIVACY ERRORS (800-999)
+  // Privacy regulations, data protection, and compliance failures.
+  // COMPLIANCE: GDPR, CCPA, HIPAA, data protection regulations
+  // CRITICALITY: Many require mandatory breach notification
+  // =============================================================================
+
+  // Data retention period violation (too long or premature deletion).
+  // HTTP: 403 Forbidden
+  // COMPLIANCE: GDPR Article 5(1)(e), industry-specific retention rules
+  // AUDIT: Log data type, retention policy, and violation details
+  ERROR_CODE_DATA_RETENTION_VIOLATION = 800;
+
+  // Access to Personally Identifiable Information denied.
+  // HTTP: 403 Forbidden
+  // COMPLIANCE: GDPR Article 32, data minimization
+  // AUDIT: Log access attempt, user role, data classification
+  // SECURITY: High-priority security event
+  ERROR_CODE_PII_ACCESS_DENIED = 810;
+
+  // Operation violates GDPR requirement.
+  // HTTP: 403 Forbidden
+  // COMPLIANCE: General Data Protection Regulation (EU)
+  // INCIDENT: May require Data Protection Officer notification
+  // AUDIT: Include GDPR article reference
+  // LEGAL: Potential regulatory fines
+  ERROR_CODE_GDPR_VIOLATION = 820;
+
+  // Operation violates CCPA requirement.
+  // HTTP: 403 Forbidden
+  // COMPLIANCE: California Consumer Privacy Act
+  // INCIDENT: Document violation for regulatory reporting
+  // AUDIT: Include CCPA section reference
+  ERROR_CODE_CCPA_VIOLATION = 830;
+
+  // Data residency requirement violated (data in wrong region).
+  // HTTP: 403 Forbidden
+  // COMPLIANCE: Data sovereignty laws (Russia, China, EU)
+  // INCIDENT: Critical violation requiring immediate remediation
+  // TECHNICAL: Check data center assignment, routing
+  ERROR_CODE_DATA_RESIDENCY_VIOLATION = 840;
+
+  // Data anonymization or pseudonymization process failed.
+  // HTTP: 500 Internal Server Error
+  // COMPLIANCE: GDPR Article 25, privacy by design
+  // INCIDENT: May block data processing until resolved
+  // SECURITY: Risk of re-identification
+  ERROR_CODE_ANONYMIZATION_FAILED = 850;
+
+  // Data encryption required but not applied.
+  // HTTP: 500 Internal Server Error
+  // COMPLIANCE: GDPR Article 32, HIPAA Security Rule
+  // SECURITY: Critical security incident
+  // INCIDENT: Immediate encryption required
+  ERROR_CODE_ENCRYPTION_REQUIRED = 860;
+
+  // Audit log recording failed (critical compliance failure).
+  // HTTP: 500 Internal Server Error
+  // COMPLIANCE: SOC 2, ISO 27001, HIPAA, PCI DSS
+  // INCIDENT: System must halt operations until logging restored
+  // MONITORING: Critical alert to security team
+  ERROR_CODE_AUDIT_LOG_FAILURE = 870;
+
+  // GDPR Right to Erasure ("right to be forgotten") request.
+  // HTTP: 202 Accepted (async processing)
+  // COMPLIANCE: GDPR Article 17
+  // TIMELINE: Must complete within 30 days
+  // SCOPE: Includes backups, analytics, third-party systems
+  ERROR_CODE_RIGHT_TO_ERASURE = 880;
+
+  // Data subject access request under privacy laws.
+  // HTTP: 202 Accepted (async processing)
+  // COMPLIANCE: GDPR Article 15, CCPA Section 1798.110
+  // TIMELINE: 30-45 days depending on jurisdiction
+  // RESPONSE: Comprehensive data export in portable format
+  ERROR_CODE_DATA_SUBJECT_REQUEST = 890;
+
+  // User has withdrawn consent for data processing.
+  // HTTP: 403 Forbidden
+  // COMPLIANCE: GDPR Article 7(3)
+  // ACTION: Cease processing immediately
+  // AUDIT: Log withdrawal timestamp and scope
+  ERROR_CODE_CONSENT_WITHDRAWN = 900;
+
+  // Data use violates stated purpose or consent scope.
+  // HTTP: 403 Forbidden
+  // COMPLIANCE: GDPR Article 5(1)(b) - purpose limitation
+  // INCIDENT: Requires privacy impact assessment
+  // AUDIT: Document intended vs. actual purpose
+  ERROR_CODE_PURPOSE_LIMITATION = 910;
+
+  // Cross-border data transfer violates regulations.
+  // HTTP: 403 Forbidden
+  // COMPLIANCE: GDPR Chapter V, Standard Contractual Clauses
+  // LEGAL: Requires adequate safeguards or approved mechanism
+  // GEOGRAPHY: Check source/destination country adequacy decision
+  ERROR_CODE_CROSS_BORDER_TRANSFER = 920;
+
+  // Potential data breach detected by monitoring systems.
+  // HTTP: 500 Internal Server Error
+  // COMPLIANCE: GDPR Article 33 (72-hour notification to DPA)
+  // INCIDENT: Activate incident response plan immediately
+  // NOTIFICATION: May require notifying affected individuals
+  // SECURITY: Critical security event requiring forensics
+  ERROR_CODE_DATA_BREACH_DETECTED = 930;
+
+  // Risk of sensitive data exposure detected.
+  // HTTP: 500 Internal Server Error
+  // COMPLIANCE: Preventive control for breach avoidance
+  // SECURITY: High-priority alert to security operations
+  // ACTION: Immediate remediation required
+  // AUDIT: Log exposure vector and affected data classification
+  ERROR_CODE_SENSITIVE_DATA_EXPOSURE = 940;
+
+  // Reserved for future error codes
+  reserved 950 to 99999;
+}

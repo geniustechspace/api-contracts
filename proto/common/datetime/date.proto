@@ -1,0 +1,96 @@
+syntax = "proto3";
+
+package geniustechspace.common.datetime.v1;
+
+// =============================================================================
+// DATE MODULE - v1.0.0
+// =============================================================================
+//
+// Date objects, ranges and recurring event patterns for scheduling.
+// Supports flexible scheduling scenarios with iCalendar compatibility.
+//
+// USAGE:
+// - Event scheduling
+// - Availability windows
+// - Recurring appointments
+// - Business hours
+//
+// COMPLIANCE:
+// - RFC 5545: iCalendar recurrence rules
+//
+// =============================================================================
+
+import "google/protobuf/timestamp.proto";
+import "buf/validate/validate.proto";
+// import "common/datetime/enums.proto";
+
+// Language-specific code generation options
+option go_package = "github.com/geniustechspace/api-contracts/gen/go/common/v1";
+option java_multiple_files = true;
+option java_package = "com.geniustechspace.api.common.v1";
+
+// =============================================================================
+// DATE OBJECT
+// =============================================================================
+//
+// Date represents a calendar date without time or timezone.
+//
+// USAGE:
+// - Birthdates
+// - Holidays
+// - Recurring annual events
+
+message Date {
+  // Year of the date.
+  // USAGE: Full year (e.g., 2024)
+  // RANGE: 1 to 9999
+  int32 year = 1 [(buf.validate.field).int32 = {gte: 1900, lte: 2200}];
+
+  // Month of the year.
+  // USAGE: 1 (January) to 12 (December)
+  // RANGE: 1 to 12
+  int32 month = 2 [(buf.validate.field).int32 = {gte: 1, lte: 12}];
+
+  // Day of the month.
+  // USAGE: 1 to 31 depending on month/year
+  // RANGE: 1 to 31
+  int32 day = 3 [(buf.validate.field).int32 = {gte: 1, lte: 31}];
+
+  // Optional timezone identifier (IANA format).
+  // USAGE: Specify timezone for date context
+  // EXAMPLE: "America/New_York", "Europe/London"
+  string timezone = 4 [(buf.validate.field).string.pattern = "^[A-Za-z_]+/[A-Za-z_]+$"];
+
+  // Reserved for future extensions
+  reserved 5 to 10;
+}
+
+
+// =============================================================================
+// DATE RANGE
+// =============================================================================
+//
+// DateRange represents a period between two dates.
+// USAGE:
+// - Vacation periods
+// - Subscription validity
+// - Report date ranges
+
+message DateRange {
+  // Start date of the range (inclusive).
+  // USAGE: Beginning of period
+  Date start_date = 1 [(buf.validate.field).required = true];
+
+  // End date of the range (exclusive).
+  // USAGE: End of period
+  Date end_date = 2 [(buf.validate.field).required = true];
+
+  // Optional timezone identifier (IANA format).
+  // USAGE: Specify timezone for date context
+  // EXAMPLE: "America/New_York", "Europe/London"
+  string timezone = 3 [(buf.validate.field).string.pattern = "^[A-Za-z_]+/[A-Za-z_]+$"];
+
+  // Reserved for future extensions
+  reserved 4 to 10;
+}
+

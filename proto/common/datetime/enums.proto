@@ -1,0 +1,165 @@
+syntax = "proto3";
+
+package geniustechspace.common.datetime.v1;
+
+// =============================================================================
+// DATETIME & SCHEDULING ENUMS - v1.0.0
+// =============================================================================
+//
+// Enumerations for date/time operations, recurrence patterns, and scheduling.
+//
+// COMPLIANCE:
+// - RFC 5545: iCalendar recurrence rules
+// - ISO 8601: Date and time format standards
+//
+// =============================================================================
+
+// Language-specific code generation options
+option go_package = "github.com/geniustechspace/api-contracts/gen/go/common/v1";
+option java_multiple_files = true;
+option java_package = "com.geniustechspace.api.common.v1";
+
+// =============================================================================
+// RECURRENCE FREQUENCY
+// =============================================================================
+
+// RecurrenceFrequency defines the base unit for recurring event patterns.
+//
+// USAGE GUIDANCE:
+// - Use with RecurrenceRule for scheduling patterns
+// - Combine with interval for custom frequencies
+// - Map to iCalendar FREQ component
+//
+// COMPLIANCE:
+// - RFC 5545: iCalendar FREQ values
+//
+// EXAMPLES:
+// - SECONDLY with interval=10: Every 10 seconds
+// - MINUTELY with interval=5: Every 5 minutes
+// - HOURLY with interval=1: Every hour
+// - DAILY with interval=1: Every day
+// - WEEKLY with interval=2: Every 2 weeks
+// - MONTHLY with interval=1: Every month
+// - YEARLY with interval=1: Every year
+//
+// RELATED TYPES:
+// - RecurrenceRule: Complete recurrence pattern definition
+enum RecurrenceFrequency {
+  // Default/uninitialized value. Must be explicitly set.
+  // REQUIRED: proto3 best practice for enum zero value
+  RECURRENCE_FREQUENCY_UNSPECIFIED = 0;
+
+  // Secondly recurrence pattern.
+  // USAGE: Secondly reminders, tasks
+  // RFC 5545: FREQ=SECONDLY
+  // EXAMPLE: Every 30 seconds
+  RECURRENCE_FREQUENCY_SECONDLY = 10;
+
+  // Minutely recurrence pattern.
+  // USAGE: Minutely reminders, tasks
+  // RFC 5545: FREQ=MINUTELY
+  // EXAMPLE: Every 5 minutes
+  RECURRENCE_FREQUENCY_MINUTELY = 20;
+
+  // Hourly recurrence pattern.
+  // USAGE: Hourly meetings, reminders
+  // RFC 5545: FREQ=HOURLY
+  // EXAMPLE: Every hour at 15 minutes past the hour
+  RECURRENCE_FREQUENCY_HOURLY = 30;
+
+  // Daily recurrence pattern.
+  // USAGE: Daily meetings, daily reports, daily backups
+  // RFC 5545: FREQ=DAILY
+  // EXAMPLE: Every day at 9am
+  RECURRENCE_FREQUENCY_DAILY = 40;
+
+  // Weekly recurrence pattern.
+  // USAGE: Weekly meetings, weekly reports
+  // RFC 5545: FREQ=WEEKLY
+  // EXAMPLE: Every Monday and Wednesday
+  // COMBINES WITH: days_of_week for specific weekdays
+  RECURRENCE_FREQUENCY_WEEKLY = 50;
+
+  // Monthly recurrence pattern.
+  // USAGE: Monthly invoices, monthly reviews
+  // RFC 5545: FREQ=MONTHLY
+  // EXAMPLE: 15th of every month
+  // COMBINES WITH: days_of_month for specific dates
+  RECURRENCE_FREQUENCY_MONTHLY = 60;
+
+  // Yearly recurrence pattern.
+  // USAGE: Annual reviews, birthdays, anniversaries
+  // RFC 5545: FREQ=YEARLY
+  // EXAMPLE: January 1st every year
+  // COMBINES WITH: months_of_year, days_of_month
+  RECURRENCE_FREQUENCY_YEARLY = 70;
+
+  // Reserved for future frequencies
+  reserved 80 to 9999;
+}
+
+// =============================================================================
+// DAY OF WEEK
+// =============================================================================
+
+// DayOfWeek represents days of the week for scheduling and recurrence.
+//
+// USAGE GUIDANCE:
+// - Use for weekly recurrence patterns
+// - Specify weekday-based rules
+// - Map to iCalendar BYDAY component
+//
+// COMPLIANCE:
+// - RFC 5545: Two-letter weekday abbreviations
+// - ISO 8601: Week starts on Monday
+//
+// EXAMPLES:
+// - [MONDAY, WEDNESDAY, FRIDAY]: MWF schedule
+// - [SATURDAY, SUNDAY]: Weekend only
+//
+// RELATED TYPES:
+// - RecurrenceRule: Uses in days_of_week field
+enum DayOfWeek {
+  // Default/uninitialized value. Must be explicitly set.
+  // REQUIRED: proto3 best practice for enum zero value
+  DAY_OF_WEEK_UNSPECIFIED = 0;
+
+  // Monday - First day of ISO week.
+  // RFC 5545: MO
+  // ISO 8601: Day 1 of week
+  DAY_OF_WEEK_MONDAY = 10;
+
+  // Tuesday - Second day of ISO week.
+  // RFC 5545: TU
+  // ISO 8601: Day 2 of week
+  DAY_OF_WEEK_TUESDAY = 20;
+
+  // Wednesday - Third day of ISO week.
+  // RFC 5545: WE
+  // ISO 8601: Day 3 of week
+  DAY_OF_WEEK_WEDNESDAY = 30;
+
+  // Thursday - Fourth day of ISO week.
+  // RFC 5545: TH
+  // ISO 8601: Day 4 of week
+  DAY_OF_WEEK_THURSDAY = 40;
+
+  // Friday - Fifth day of ISO week.
+  // RFC 5545: FR
+  // ISO 8601: Day 5 of week
+  DAY_OF_WEEK_FRIDAY = 50;
+
+  // Saturday - Sixth day of ISO week.
+  // RFC 5545: SA
+  // ISO 8601: Day 6 of week
+  DAY_OF_WEEK_SATURDAY = 60;
+
+  // Sunday - Seventh day of ISO week.
+  // RFC 5545: SU
+  // ISO 8601: Day 7 of week
+  // NOTE: Some cultures treat Sunday as first day of week
+  DAY_OF_WEEK_SUNDAY = 70;
+
+  // Reserved for future extensions
+  reserved 80 to 9999;
+}
