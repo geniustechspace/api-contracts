@@ -58,7 +58,6 @@ Each language uses its native workspace/monorepo tooling:
 api-contracts/
 ├── proto/                    # Proto definitions (source of truth)
 │   ├── core/v1/             # Core infrastructure types
-│   ├── common/v1/           # Common business types
 │   ├── idp/v1/              # Identity Provider
 │   └── [services]/v1/       # Business services
 │

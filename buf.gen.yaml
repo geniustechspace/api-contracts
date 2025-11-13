@@ -64,10 +64,13 @@ plugins:
       # Use bytes::Bytes for better performance
       - bytes=.
   
-  # Rust: Tonic v0.4.0 - gRPC client and server code generation
+  # Rust: Tonic v0.4.0 - gRPC client code generation
   # Latest stable plugin version for Tonic 0.12.x
   - remote: buf.build/community/neoeinstein-tonic:v0.4.0
     out: clients/rust
+    opt:
+      # Generate only client code, not server code
+      - no_server
   
   # ===========================================================================
   # GO - BACKEND SERVICES

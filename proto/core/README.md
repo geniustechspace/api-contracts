@@ -10,6 +10,8 @@ This directory contains fundamental infrastructure types used across all service
 - **audit.proto** - Audit logging types
 - **metadata.proto** - Standard metadata fields
 - **health.proto** - Health check definitions
+- **pagination.proto** - Pagination patterns for list/search APIs
+- **types.proto** - Common data types (email, phone, address)
 
 ## Usage
 

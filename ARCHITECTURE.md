@@ -45,7 +45,6 @@ Each logical service or module is independent:
 ```
 proto/
 ├── core/v1/         → geniustechspace-core (Rust), @geniustechspace/core (TS)
-├── common/v1/       → Part of core package
 ├── idp/v1/          → geniustechspace-idp, @geniustechspace/idp
 └── notification/v1/ → geniustechspace-notification, @geniustechspace/notification
 ```
@@ -92,8 +91,7 @@ api-contracts/
 │   │   ├── errors.proto               # Standard error handling
 │   │   ├── audit.proto                # Audit logging
 │   │   ├── metadata.proto             # Resource metadata
-│   │   └── health.proto               # Health checks
-│   ├── common/v1/                      # Common types
+│   │   ├── health.proto               # Health checks
 │   │   ├── pagination.proto           # Pagination patterns
 │   │   └── types.proto                # Common data types
 │   ├── idp/v1/                         # Identity Provider
@@ -163,17 +161,8 @@ Fundamental infrastructure types used by all services:
 - **audit.proto**: Audit logging types
 - **metadata.proto**: Resource metadata
 - **health.proto**: Health check definitions
-
-### Common Module (`proto/common/v1/`)
-
-Shared business types:
-
 - **pagination.proto**: Pagination patterns
 - **types.proto**: Common types (email, phone, address)
-- **enums.proto**: Common enumerations (planned)
-- **search.proto**: Search and filtering (planned)
-- **money.proto**: Currency types (planned)
-- **geography.proto**: Geographic types (planned)
 
 ### Service Modules
 

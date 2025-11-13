@@ -47,7 +47,7 @@ package myservice.v1;
 import "core/v1/tenant.proto";
 import "core/v1/context.proto";
 import "core/v1/errors.proto";
-import "common/v1/pagination.proto";
+import "core/v1/pagination.proto";
 import "validate/validate.proto";
 import "google/api/annotations.proto";
 
@@ -243,7 +243,7 @@ To add new types to an existing service:
 
 ## Creating a New Proto Module
 
-For a new top-level module (like `common`, `core`, etc.):
+For a new top-level module (like `core`, `idp`, etc.):
 
 1. Create the directory structure: `proto/newmodule/v1/`
 2. Add a README explaining the module's purpose
@@ -259,7 +259,7 @@ For a new top-level module (like `common`, `core`, etc.):
 2. **Document everything**: All services, RPCs, messages, fields, and enums need documentation
 3. **Include tenant context**: All service methods should include tenant context
 4. **Standard errors**: Use `core.v1.ErrorResponse` for errors
-5. **Pagination**: Use `common.v1.PaginationRequest` and `PaginationResponse`
+5. **Pagination**: Use `core.v1.PaginationRequest` and `PaginationResponse`
 6. **Metadata**: Include `core.v1.ResourceMetadata` on resources
 
 ### Naming Conventions
@@ -290,7 +290,7 @@ For a new top-level module (like `common`, `core`, etc.):
 
 ### Dependencies
 
-- Prefer importing from `core` and `common` modules
+- Prefer importing from `core` module
 - Avoid circular dependencies
 - Keep service-specific types in their own modules
 - Reuse common types when possible

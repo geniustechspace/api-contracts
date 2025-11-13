@@ -29,8 +29,6 @@ This document confirms the enterprise-grade setup of the API contracts repositor
 - ✅ `metadata.proto` - Resource metadata and change tracking (NEW)
 - ✅ `audit.proto` - Audit logging for compliance (NEW)
 - ✅ `health.proto` - Health check definitions (NEW)
-
-**Added Common Types** (`proto/common/v1/`):
 - ✅ `pagination.proto` - Pagination patterns (NEW)
 - ✅ `types.proto` - Common data types (email, phone, address) (NEW)
 
@@ -137,8 +135,7 @@ clients/java/
 ```
 api-contracts/
 ├── proto/                    # Proto definitions (TRACKED)
-│   ├── core/v1/             # 6 proto files
-│   ├── common/v1/           # 2 proto files
+│   ├── core/v1/             # 8 proto files
 │   └── idp/v1/              # (Future definitions)
 │
 ├── clients/                 # Generated code (NOT TRACKED)
