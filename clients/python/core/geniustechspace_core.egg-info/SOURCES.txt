@@ -1,9 +1,0 @@
-pyproject.toml
-geniustechspace_core.egg-info/PKG-INFO
-geniustechspace_core.egg-info/SOURCES.txt
-geniustechspace_core.egg-info/dependency_links.txt
-geniustechspace_core.egg-info/requires.txt
-geniustechspace_core.egg-info/top_level.txt
-v1/__init__.py
-v1/tenant_pb2.py
-v1/tenant_pb2_grpc.py
