@@ -31,13 +31,14 @@ jobs:
       - name: Check Breaking Changes
         if: github.event_name == 'pull_request'
         run: |
-          # Check if main branch exists before running breaking change detection
-          if git ls-remote --exit-code --heads origin main > /dev/null 2>&1; then
-            buf breaking --against '.git#branch=main'
-          else
+          # Fetch the main branch for comparison
+          git fetch origin main:main 2>/dev/null || {
             echo "Main branch does not exist yet, skipping breaking change detection"
             echo "Breaking change detection will be enabled once the main branch is created"
-          fi
+            exit 0
+          }
+          # Run breaking change detection against fetched main branch
+          buf breaking --against '.git#branch=main'
 
   generate-and-build:
     name: Generate and Build All Clients
