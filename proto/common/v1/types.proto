@@ -1,0 +1,184 @@
+// =============================================================================
+// Common Types - Shared Data Types
+// =============================================================================
+// This file defines common data types used across multiple services.
+// These types provide standardization for frequently used concepts.
+// =============================================================================
+
+syntax = "proto3";
+
+package common.v1;
+
+import "google/protobuf/timestamp.proto";
+import "validate/validate.proto";
+
+// Go: Backend services package
+option go_package = "github.com/geniustechspace/api-contracts/gen/go/common/v1;commonv1";
+
+// Java: Enterprise integration package
+option java_package = "com.geniustechspace.api.common.v1";
+option java_multiple_files = true;
+option java_outer_classname = "TypesProto";
+
+// =============================================================================
+// Contact Information
+// =============================================================================
+
+// EmailAddress represents an email address.
+message EmailAddress {
+  // Email address value.
+  string value = 1 [(validate.rules).string.email = true];
+
+  // Whether this is the primary email.
+  bool is_primary = 2;
+
+  // Whether the email is verified.
+  bool is_verified = 3;
+
+  // Type of email (personal, work, etc.).
+  EmailType type = 4;
+}
+
+// EmailType categorizes email addresses.
+enum EmailType {
+  EMAIL_TYPE_UNSPECIFIED = 0;
+  EMAIL_TYPE_PERSONAL = 1;
+  EMAIL_TYPE_WORK = 2;
+  EMAIL_TYPE_OTHER = 3;
+}
+
+// PhoneNumber represents a phone number.
+message PhoneNumber {
+  // Phone number in E.164 format (+1234567890).
+  string value = 1 [(validate.rules).string.pattern = "^\\+[1-9]\\d{1,14}$"];
+
+  // Whether this is the primary phone number.
+  bool is_primary = 2;
+
+  // Whether the phone number is verified.
+  bool is_verified = 3;
+
+  // Type of phone number.
+  PhoneType type = 4;
+
+  // Country code (ISO 3166-1 alpha-2).
+  string country_code = 5 [(validate.rules).string.len = 2];
+}
+
+// PhoneType categorizes phone numbers.
+enum PhoneType {
+  PHONE_TYPE_UNSPECIFIED = 0;
+  PHONE_TYPE_MOBILE = 1;
+  PHONE_TYPE_HOME = 2;
+  PHONE_TYPE_WORK = 3;
+  PHONE_TYPE_FAX = 4;
+  PHONE_TYPE_OTHER = 5;
+}
+
+// =============================================================================
+// Address
+// =============================================================================
+
+// Address represents a physical address.
+message Address {
+  // Street address line 1.
+  string street_line1 = 1 [(validate.rules).string.max_len = 256];
+
+  // Street address line 2 (optional).
+  string street_line2 = 2 [(validate.rules).string.max_len = 256];
+
+  // City or locality.
+  string city = 3 [(validate.rules).string.max_len = 128];
+
+  // State, province, or region.
+  string state = 4 [(validate.rules).string.max_len = 128];
+
+  // Postal or ZIP code.
+  string postal_code = 5 [(validate.rules).string.max_len = 32];
+
+  // Country name.
+  string country = 6 [(validate.rules).string.max_len = 128];
+
+  // Country code (ISO 3166-1 alpha-2).
+  string country_code = 7 [(validate.rules).string.len = 2];
+
+  // Whether this is the primary address.
+  bool is_primary = 8;
+
+  // Type of address.
+  AddressType type = 9;
+
+  // Latitude (for geocoding).
+  double latitude = 10 [(validate.rules).double = {
+    gte: -90,
+    lte: 90
+  }];
+
+  // Longitude (for geocoding).
+  double longitude = 11 [(validate.rules).double = {
+    gte: -180,
+    lte: 180
+  }];
+}
+
+// AddressType categorizes addresses.
+enum AddressType {
+  ADDRESS_TYPE_UNSPECIFIED = 0;
+  ADDRESS_TYPE_HOME = 1;
+  ADDRESS_TYPE_WORK = 2;
+  ADDRESS_TYPE_BILLING = 3;
+  ADDRESS_TYPE_SHIPPING = 4;
+  ADDRESS_TYPE_OTHER = 5;
+}
+
+// =============================================================================
+// Date and Time Ranges
+// =============================================================================
+
+// DateRange represents a date range.
+message DateRange {
+  // Start date (inclusive).
+  google.protobuf.Timestamp start_date = 1;
+
+  // End date (inclusive).
+  google.protobuf.Timestamp end_date = 2;
+}
+
+// TimeRange represents a time range within a day.
+message TimeRange {
+  // Start time (HH:MM format).
+  string start_time = 1 [(validate.rules).string.pattern = "^([01]\\d|2[0-3]):([0-5]\\d)$"];
+
+  // End time (HH:MM format).
+  string end_time = 2 [(validate.rules).string.pattern = "^([01]\\d|2[0-3]):([0-5]\\d)$"];
+
+  // Timezone (IANA timezone name).
+  string timezone = 3 [(validate.rules).string.max_len = 64];
+}
+
+// =============================================================================
+// Status and State
+// =============================================================================
+
+// Status represents a generic status with message.
+message Status {
+  // Status code.
+  StatusCode code = 1;
+
+  // Human-readable status message.
+  string message = 2;
+
+  // Additional details.
+  map<string, string> details = 3;
+}
+
+// StatusCode represents common status codes.
+enum StatusCode {
+  STATUS_CODE_UNSPECIFIED = 0;
+  STATUS_CODE_ACTIVE = 1;
+  STATUS_CODE_INACTIVE = 2;
+  STATUS_CODE_PENDING = 3;
+  STATUS_CODE_COMPLETED = 4;
+  STATUS_CODE_FAILED = 5;
+  STATUS_CODE_CANCELLED = 6;
+}

@@ -1,0 +1,112 @@
+// =============================================================================
+// Pagination - Common Pagination Patterns
+// =============================================================================
+// This file defines standard pagination types used across all list/search APIs.
+// Supports both offset-based and cursor-based pagination.
+//
+// Pagination patterns:
+// - Offset-based: Traditional page number and page size
+// - Cursor-based: For large datasets and real-time data
+// - Token-based: For stateless pagination with encoded state
+// =============================================================================
+
+syntax = "proto3";
+
+package common.v1;
+
+import "validate/validate.proto";
+
+// Go: Backend services package
+option go_package = "github.com/geniustechspace/api-contracts/gen/go/common/v1;commonv1";
+
+// Java: Enterprise integration package
+option java_package = "com.geniustechspace.api.common.v1";
+option java_multiple_files = true;
+option java_outer_classname = "PaginationProto";
+
+// =============================================================================
+// Pagination Request
+// =============================================================================
+
+// PaginationRequest specifies pagination parameters for list requests.
+message PaginationRequest {
+  // Page number (1-based, for offset pagination).
+  // If both page and cursor are specified, cursor takes precedence.
+  int32 page = 1 [(validate.rules).int32 = {
+    gte: 1,
+    lte: 10000
+  }];
+
+  // Page size (number of items per page).
+  int32 page_size = 2 [(validate.rules).int32 = {
+    gte: 1,
+    lte: 1000
+  }];
+
+  // Cursor for cursor-based pagination.
+  // Opaque string returned from previous response.
+  string cursor = 3 [(validate.rules).string.max_len = 512];
+
+  // Pagination token (alternative to cursor).
+  // Contains encoded pagination state.
+  string page_token = 4 [(validate.rules).string.max_len = 512];
+}
+
+// =============================================================================
+// Pagination Response
+// =============================================================================
+
+// PaginationResponse contains pagination metadata for list responses.
+message PaginationResponse {
+  // Current page number (1-based).
+  int32 page = 1;
+
+  // Page size used for this response.
+  int32 page_size = 2;
+
+  // Total number of items across all pages.
+  // May be omitted if expensive to compute.
+  int64 total_items = 3;
+
+  // Total number of pages.
+  // May be omitted if total_items is not available.
+  int32 total_pages = 4;
+
+  // Whether there is a next page.
+  bool has_next_page = 5;
+
+  // Whether there is a previous page.
+  bool has_previous_page = 6;
+
+  // Cursor for the next page (cursor-based pagination).
+  string next_cursor = 7;
+
+  // Cursor for the previous page (cursor-based pagination).
+  string previous_cursor = 8;
+
+  // Page token for the next page (token-based pagination).
+  string next_page_token = 9;
+
+  // Page token for the previous page (token-based pagination).
+  string previous_page_token = 10;
+}
+
+// =============================================================================
+// Page Info (Alternative Format)
+// =============================================================================
+
+// PageInfo is a simpler pagination metadata format.
+// Used when full PaginationResponse is not needed.
+message PageInfo {
+  // Whether there are more results.
+  bool has_next_page = 1;
+
+  // Whether there are previous results.
+  bool has_previous_page = 2;
+
+  // Cursor for the next page.
+  string start_cursor = 3;
+
+  // Cursor for the end of the current page.
+  string end_cursor = 4;
+}

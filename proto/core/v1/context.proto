@@ -1,0 +1,90 @@
+// =============================================================================
+// Request/Response Context - Core Infrastructure
+// =============================================================================
+// This file defines request and response context types that are used across
+// all services for:
+// - Request tracking and correlation
+// - Distributed tracing
+// - Request metadata propagation
+// - Response metadata and pagination
+//
+// Every request should include a RequestContext (via metadata or embedded).
+// Every response should include a ResponseContext.
+// =============================================================================
+
+syntax = "proto3";
+
+package core.v1;
+
+import "google/protobuf/timestamp.proto";
+import "validate/validate.proto";
+
+// Go: Backend services package
+option go_package = "github.com/geniustechspace/api-contracts/gen/go/core/v1;corev1";
+
+// Java: Enterprise integration package
+option java_package = "com.geniustechspace.api.core.v1";
+option java_multiple_files = true;
+option java_outer_classname = "ContextProto";
+
+// =============================================================================
+// Request Context
+// =============================================================================
+
+// RequestContext contains metadata for every API request.
+// This is typically propagated via gRPC metadata or HTTP headers.
+message RequestContext {
+  // Unique request identifier (UUID v4 recommended).
+  // Used for request tracking, logging, and debugging.
+  string request_id = 1 [(validate.rules).string = {
+    min_len: 1,
+    max_len: 64
+  }];
+
+  // Correlation ID for distributed tracing.
+  // Groups related requests across multiple services.
+  string correlation_id = 2 [(validate.rules).string.max_len = 64];
+
+  // User ID of the authenticated user making the request.
+  string user_id = 3 [(validate.rules).string.max_len = 64];
+
+  // IP address of the client making the request.
+  string client_ip = 4 [(validate.rules).string.max_len = 45];
+
+  // User agent string from the client.
+  string user_agent = 5 [(validate.rules).string.max_len = 512];
+
+  // Request timestamp (when the request was initiated).
+  google.protobuf.Timestamp timestamp = 6;
+
+  // Geographic region of the request (for data residency).
+  string region = 7 [(validate.rules).string.max_len = 10];
+
+  // Additional custom metadata.
+  map<string, string> metadata = 10;
+}
+
+// =============================================================================
+// Response Context
+// =============================================================================
+
+// ResponseContext contains metadata for every API response.
+message ResponseContext {
+  // Request ID from the original request.
+  string request_id = 1;
+
+  // Server-side processing time in milliseconds.
+  int64 processing_time_ms = 2;
+
+  // Timestamp when the response was generated.
+  google.protobuf.Timestamp timestamp = 3;
+
+  // Server instance that handled the request.
+  string server_instance = 4;
+
+  // API version used to process the request.
+  string api_version = 5;
+
+  // Additional response metadata.
+  map<string, string> metadata = 10;
+}

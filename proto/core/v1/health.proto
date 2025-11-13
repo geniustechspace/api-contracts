@@ -1,0 +1,145 @@
+// =============================================================================
+// Health Checks - Service Health and Readiness
+// =============================================================================
+// This file defines health check types for service monitoring and orchestration.
+// All services should implement health check endpoints using these types.
+//
+// Health checks are used for:
+// - Load balancer health monitoring
+// - Kubernetes liveness and readiness probes
+// - Service mesh health checks
+// - Monitoring and alerting
+// =============================================================================
+
+syntax = "proto3";
+
+package core.v1;
+
+import "google/protobuf/timestamp.proto";
+import "validate/validate.proto";
+
+// Go: Backend services package
+option go_package = "github.com/geniustechspace/api-contracts/gen/go/core/v1;corev1";
+
+// Java: Enterprise integration package
+option java_package = "com.geniustechspace.api.core.v1";
+option java_multiple_files = true;
+option java_outer_classname = "HealthProto";
+
+// =============================================================================
+// Health Service
+// =============================================================================
+
+// HealthService provides health check endpoints for monitoring.
+service HealthService {
+  // Check performs a health check.
+  // Returns the current health status of the service.
+  rpc Check(HealthCheckRequest) returns (HealthCheckResponse);
+
+  // Watch performs a streaming health check.
+  // Continuously streams health status updates.
+  rpc Watch(HealthCheckRequest) returns (stream HealthCheckResponse);
+}
+
+// =============================================================================
+// Health Check Request/Response
+// =============================================================================
+
+// HealthCheckRequest is used to query service health.
+message HealthCheckRequest {
+  // Service name to check (empty for overall health).
+  string service = 1 [(validate.rules).string.max_len = 128];
+}
+
+// HealthCheckResponse returns the health status of a service.
+message HealthCheckResponse {
+  // Overall health status.
+  HealthStatus status = 1;
+
+  // Service name being checked.
+  string service = 2;
+
+  // Timestamp of the health check.
+  google.protobuf.Timestamp timestamp = 3;
+
+  // Health checks for individual components.
+  repeated ComponentHealth components = 4;
+
+  // Version information.
+  VersionInfo version = 5;
+
+  // Additional health metadata.
+  map<string, string> metadata = 10;
+}
+
+// =============================================================================
+// Health Status
+// =============================================================================
+
+// HealthStatus indicates the health state of a service or component.
+enum HealthStatus {
+  // Status is unknown.
+  HEALTH_STATUS_UNKNOWN = 0;
+
+  // Service is healthy and accepting traffic.
+  HEALTH_STATUS_HEALTHY = 1;
+
+  // Service is unhealthy but may recover.
+  HEALTH_STATUS_UNHEALTHY = 2;
+
+  // Service is degraded but still accepting traffic.
+  HEALTH_STATUS_DEGRADED = 3;
+
+  // Service is starting up and not ready for traffic.
+  HEALTH_STATUS_STARTING = 4;
+
+  // Service is shutting down gracefully.
+  HEALTH_STATUS_STOPPING = 5;
+}
+
+// =============================================================================
+// Component Health
+// =============================================================================
+
+// ComponentHealth represents the health of an individual component.
+message ComponentHealth {
+  // Component name (e.g., "database", "cache", "storage").
+  string name = 1 [(validate.rules).string.min_len = 1];
+
+  // Component health status.
+  HealthStatus status = 2;
+
+  // Human-readable status message.
+  string message = 3;
+
+  // Timestamp of the component check.
+  google.protobuf.Timestamp timestamp = 4;
+
+  // Response time in milliseconds.
+  int64 response_time_ms = 5;
+
+  // Component-specific metrics.
+  map<string, string> metrics = 10;
+}
+
+// =============================================================================
+// Version Information
+// =============================================================================
+
+// VersionInfo contains version and build information.
+message VersionInfo {
+  // Service version (semantic versioning).
+  string version = 1 [(validate.rules).string.min_len = 1];
+
+  // Git commit hash.
+  string commit = 2 [(validate.rules).string.max_len = 64];
+
+  // Build timestamp.
+  google.protobuf.Timestamp build_time = 3;
+
+  // Go version or runtime version.
+  string runtime_version = 4;
+
+  // Build environment (e.g., "production", "staging").
+  string environment = 5;
+}

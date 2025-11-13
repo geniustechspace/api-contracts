@@ -1,0 +1,166 @@
+// =============================================================================
+// Standard Error Handling - Core Infrastructure
+// =============================================================================
+// This file defines standardized error types and error response format
+// used across all services. All services MUST return errors in this format
+// for consistency and proper error handling on the client side.
+//
+// Error Design:
+// - Structured error codes (not just HTTP status codes)
+// - Machine-readable error categories
+// - Human-readable error messages
+// - Field-level validation errors
+// - Retry guidance
+// - Security-conscious (no sensitive data in errors)
+// =============================================================================
+
+syntax = "proto3";
+
+package core.v1;
+
+import "google/protobuf/timestamp.proto";
+import "validate/validate.proto";
+
+// Go: Backend services package
+option go_package = "github.com/geniustechspace/api-contracts/gen/go/core/v1;corev1";
+
+// Java: Enterprise integration package
+option java_package = "com.geniustechspace.api.core.v1";
+option java_multiple_files = true;
+option java_outer_classname = "ErrorsProto";
+
+// =============================================================================
+// Error Response
+// =============================================================================
+
+// ErrorResponse is the standard error format returned by all services.
+message ErrorResponse {
+  // Application-specific error code (e.g., "INVALID_INPUT", "RESOURCE_NOT_FOUND").
+  // This is more specific than HTTP status codes.
+  string code = 1 [(validate.rules).string.min_len = 1];
+
+  // Human-readable error message in English.
+  // Should be suitable for display to developers.
+  string message = 2 [(validate.rules).string.min_len = 1];
+
+  // Error category for broad classification.
+  ErrorCategory category = 3;
+
+  // Severity level of the error.
+  ErrorSeverity severity = 4;
+
+  // Field-level validation errors (for input validation failures).
+  repeated FieldViolation field_violations = 5;
+
+  // Retry guidance for the client.
+  RetryInfo retry_info = 6;
+
+  // Request ID for correlation with logs.
+  string request_id = 7;
+
+  // Timestamp when the error occurred.
+  google.protobuf.Timestamp timestamp = 8;
+
+  // Additional error details (for debugging, not for display).
+  map<string, string> details = 10;
+}
+
+// =============================================================================
+// Error Categories
+// =============================================================================
+
+// ErrorCategory classifies errors into broad categories.
+enum ErrorCategory {
+  // Unspecified error category.
+  ERROR_CATEGORY_UNSPECIFIED = 0;
+
+  // Client errors (4xx) - problem with the request.
+  ERROR_CATEGORY_CLIENT_ERROR = 1;
+
+  // Server errors (5xx) - problem with the server.
+  ERROR_CATEGORY_SERVER_ERROR = 2;
+
+  // Authentication errors - invalid or missing credentials.
+  ERROR_CATEGORY_AUTHENTICATION = 3;
+
+  // Authorization errors - insufficient permissions.
+  ERROR_CATEGORY_AUTHORIZATION = 4;
+
+  // Validation errors - invalid input data.
+  ERROR_CATEGORY_VALIDATION = 5;
+
+  // Not found errors - resource does not exist.
+  ERROR_CATEGORY_NOT_FOUND = 6;
+
+  // Conflict errors - resource state conflict.
+  ERROR_CATEGORY_CONFLICT = 7;
+
+  // Rate limit errors - too many requests.
+  ERROR_CATEGORY_RATE_LIMIT = 8;
+
+  // Network errors - connection or timeout issues.
+  ERROR_CATEGORY_NETWORK = 9;
+
+  // External service errors - third-party service failures.
+  ERROR_CATEGORY_EXTERNAL_SERVICE = 10;
+}
+
+// =============================================================================
+// Error Severity
+// =============================================================================
+
+// ErrorSeverity indicates the severity level of an error.
+enum ErrorSeverity {
+  // Unspecified severity.
+  ERROR_SEVERITY_UNSPECIFIED = 0;
+
+  // Low severity - informational, no action needed.
+  ERROR_SEVERITY_LOW = 1;
+
+  // Medium severity - warning, action may be needed.
+  ERROR_SEVERITY_MEDIUM = 2;
+
+  // High severity - error, action required.
+  ERROR_SEVERITY_HIGH = 3;
+
+  // Critical severity - critical error, immediate action required.
+  ERROR_SEVERITY_CRITICAL = 4;
+}
+
+// =============================================================================
+// Field Violations
+// =============================================================================
+
+// FieldViolation represents a validation error for a specific field.
+message FieldViolation {
+  // Field path (e.g., "user.email", "items[0].quantity").
+  string field = 1 [(validate.rules).string.min_len = 1];
+
+  // Validation error code (e.g., "REQUIRED", "INVALID_FORMAT", "OUT_OF_RANGE").
+  string code = 2 [(validate.rules).string.min_len = 1];
+
+  // Human-readable error message for this field.
+  string message = 3 [(validate.rules).string.min_len = 1];
+
+  // Constraint that was violated (e.g., "min_length: 8", "pattern: ^[a-z]+$").
+  string constraint = 4;
+}
+
+// =============================================================================
+// Retry Information
+// =============================================================================
+
+// RetryInfo provides guidance on whether and how to retry a failed request.
+message RetryInfo {
+  // Whether the request can be retried.
+  bool retryable = 1;
+
+  // Recommended retry delay in seconds.
+  int32 retry_delay_seconds = 2 [(validate.rules).int32.gte = 0];
+
+  // Maximum number of retry attempts recommended.
+  int32 max_retries = 3 [(validate.rules).int32.gte = 0];
+
+  // Exponential backoff multiplier (1.0 = no backoff, 2.0 = double each time).
+  double backoff_multiplier = 4 [(validate.rules).double.gte = 1.0];
+}

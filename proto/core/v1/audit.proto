@@ -1,0 +1,168 @@
+// =============================================================================
+// Audit Logging - Compliance and Security Audit Trail
+// =============================================================================
+// This file defines audit log entry types for compliance and security.
+// All security-relevant events should generate audit log entries.
+//
+// Audit logs are used for:
+// - Security monitoring and incident response
+// - Compliance requirements (GDPR, HIPAA, SOC 2, PCI DSS)
+// - Forensic analysis
+// - User activity tracking
+// =============================================================================
+
+syntax = "proto3";
+
+package core.v1;
+
+import "google/protobuf/timestamp.proto";
+import "google/protobuf/struct.proto";
+import "core/v1/tenant.proto";
+import "validate/validate.proto";
+
+// Go: Backend services package
+option go_package = "github.com/geniustechspace/api-contracts/gen/go/core/v1;corev1";
+
+// Java: Enterprise integration package
+option java_package = "com.geniustechspace.api.core.v1";
+option java_multiple_files = true;
+option java_outer_classname = "AuditProto";
+
+// =============================================================================
+// Audit Log Entry
+// =============================================================================
+
+// AuditLogEntry represents a single auditable event in the system.
+message AuditLogEntry {
+  // Unique audit log entry ID.
+  string id = 1 [(validate.rules).string.min_len = 1];
+
+  // Tenant context for this audit event.
+  TenantContext tenant_context = 2;
+
+  // Type of audit event.
+  AuditEventType event_type = 3;
+
+  // Event category for classification.
+  AuditEventCategory category = 4;
+
+  // Severity level of the audit event.
+  AuditSeverity severity = 5;
+
+  // Timestamp when the event occurred.
+  google.protobuf.Timestamp timestamp = 6;
+
+  // User who triggered the event (if applicable).
+  string user_id = 7 [(validate.rules).string.max_len = 64];
+
+  // Service or component that generated the event.
+  string service_name = 8 [(validate.rules).string.max_len = 128];
+
+  // Action performed (e.g., "create", "update", "delete", "login").
+  string action = 9 [(validate.rules).string.min_len = 1];
+
+  // Resource type affected (e.g., "user", "document", "setting").
+  string resource_type = 10 [(validate.rules).string.max_len = 128];
+
+  // Resource ID affected (if applicable).
+  string resource_id = 11 [(validate.rules).string.max_len = 128];
+
+  // Outcome of the action.
+  AuditOutcome outcome = 12;
+
+  // IP address of the actor.
+  string ip_address = 13 [(validate.rules).string.max_len = 45];
+
+  // User agent string.
+  string user_agent = 14 [(validate.rules).string.max_len = 512];
+
+  // Request ID for correlation with application logs.
+  string request_id = 15 [(validate.rules).string.max_len = 64];
+
+  // Geographic region where the event occurred.
+  string region = 16 [(validate.rules).string.max_len = 10];
+
+  // Event-specific data (structured).
+  google.protobuf.Struct event_data = 20;
+
+  // Additional metadata.
+  map<string, string> metadata = 21;
+}
+
+// =============================================================================
+// Audit Event Categories
+// =============================================================================
+
+// AuditEventCategory groups audit events by functional area.
+enum AuditEventCategory {
+  // Unspecified category.
+  AUDIT_EVENT_CATEGORY_UNSPECIFIED = 0;
+
+  // Authentication events.
+  AUDIT_EVENT_CATEGORY_AUTHENTICATION = 1;
+
+  // Authorization/access control events.
+  AUDIT_EVENT_CATEGORY_AUTHORIZATION = 2;
+
+  // Data access events.
+  AUDIT_EVENT_CATEGORY_DATA_ACCESS = 3;
+
+  // Data modification events.
+  AUDIT_EVENT_CATEGORY_DATA_MODIFICATION = 4;
+
+  // System configuration events.
+  AUDIT_EVENT_CATEGORY_CONFIGURATION = 5;
+
+  // Security events.
+  AUDIT_EVENT_CATEGORY_SECURITY = 6;
+
+  // Compliance events.
+  AUDIT_EVENT_CATEGORY_COMPLIANCE = 7;
+
+  // Administrative events.
+  AUDIT_EVENT_CATEGORY_ADMINISTRATIVE = 8;
+
+  // User management events.
+  AUDIT_EVENT_CATEGORY_USER_MANAGEMENT = 9;
+}
+
+// =============================================================================
+// Audit Severity
+// =============================================================================
+
+// AuditSeverity indicates the importance of an audit event.
+enum AuditSeverity {
+  // Unspecified severity.
+  AUDIT_SEVERITY_UNSPECIFIED = 0;
+
+  // Informational - normal operation.
+  AUDIT_SEVERITY_INFO = 1;
+
+  // Warning - potentially suspicious activity.
+  AUDIT_SEVERITY_WARNING = 2;
+
+  // High - security-relevant event.
+  AUDIT_SEVERITY_HIGH = 3;
+
+  // Critical - security incident.
+  AUDIT_SEVERITY_CRITICAL = 4;
+}
+
+// =============================================================================
+// Audit Outcome
+// =============================================================================
+
+// AuditOutcome indicates whether an action succeeded or failed.
+enum AuditOutcome {
+  // Unspecified outcome.
+  AUDIT_OUTCOME_UNSPECIFIED = 0;
+
+  // Action succeeded.
+  AUDIT_OUTCOME_SUCCESS = 1;
+
+  // Action failed.
+  AUDIT_OUTCOME_FAILURE = 2;
+
+  // Action was denied due to authorization.
+  AUDIT_OUTCOME_DENIED = 3;
+}
