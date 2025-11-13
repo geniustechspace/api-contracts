@@ -490,39 +490,66 @@ This project supports the following compliance frameworks:
 
 ## 📦 Client Packages
 
+This project uses a **modular, multi-package architecture** where each API module is independently installable. See [MULTI_PACKAGE_ARCHITECTURE.md](clients/MULTI_PACKAGE_ARCHITECTURE.md) for details.
+
 ### Rust (Primary)
 
 ```toml
 [dependencies]
-geniustechspace-api-contracts = "0.1"
+# Install only what you need
+geniustechspace-core = "0.1.0"
+geniustechspace-idp = "0.1.0"
+geniustechspace-notification = "0.1.0"
 ```
 
 ### Go
 
 ```bash
-go get github.com/geniustechspace/api-contracts/gen/go@latest
+# Install only what you need
+go get github.com/geniustechspace/api-contracts/gen/go/core
+go get github.com/geniustechspace/api-contracts/gen/go/idp
+go get github.com/geniustechspace/api-contracts/gen/go/notification
 ```
 
 ### Python
 
 ```bash
-pip install geniustechspace-api-contracts
+# Install only what you need
+pip install geniustechspace-core
+pip install geniustechspace-idp
+pip install geniustechspace-notification
 ```
 
 ### TypeScript
 
 ```bash
-npm install @geniustechspace/api-contracts
+# Install only what you need
+npm install @geniustechspace/core
+npm install @geniustechspace/idp
+npm install @geniustechspace/notification
 ```
 
 ### Java
 
 ```xml
-<dependency>
-  <groupId>com.geniustechspace.api</groupId>
-  <artifactId>api-contracts</artifactId>
-  <version>0.1.0</version>
-</dependency>
+<dependencies>
+  <!-- Install only what you need -->
+  <dependency>
+    <groupId>com.geniustechspace</groupId>
+    <artifactId>api-contracts-core</artifactId>
+    <version>0.1.0</version>
+  </dependency>
+  <dependency>
+    <groupId>com.geniustechspace</groupId>
+    <artifactId>api-contracts-idp</artifactId>
+    <version>0.1.0</version>
+  </dependency>
+  <dependency>
+    <groupId>com.geniustechspace</groupId>
+    <artifactId>api-contracts-notification</artifactId>
+    <version>0.1.0</version>
+  </dependency>
+</dependencies>
 ```
 
 ---
