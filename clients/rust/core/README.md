@@ -32,4 +32,4 @@ let context = TenantContext {
 
 ## License
 
-MIT
+BSD-3-Clause

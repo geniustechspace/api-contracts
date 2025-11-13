@@ -10,11 +10,11 @@ readme = "README.md"
 authors = [
     {name = "GeniusTechSpace", email = "dev@geniustechspace.com"}
 ]
-license = {text = "MIT"}
+license = {text = "BSD-3-Clause"}
 classifiers = [
     "Development Status :: 4 - Beta",
     "Intended Audience :: Developers",
-    "License :: OSI Approved :: MIT License",
+    "License :: OSI Approved :: BSD License",
     "Programming Language :: Python :: 3",
     "Programming Language :: Python :: 3.9",
     "Programming Language :: Python :: 3.10",
