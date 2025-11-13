@@ -35,6 +35,7 @@ pub mod idp {
 mod tests {
     #[test]
     fn test_module_structure() {
-        assert!(true);
+        // Verify module structure compiles correctly
+        // Actual tests will be added once proto code is generated
     }
 }
