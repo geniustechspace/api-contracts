@@ -3,21 +3,22 @@ version: v2
 # =============================================================================
 # Code Generation Configuration - Enterprise API Contracts
 # =============================================================================
-# This configuration generates clients for multiple languages from proto files.
+# This configuration generates CLIENT CODE ONLY for multiple languages.
+# NO SERVER CODE is generated or should be implemented.
 # 
 # Supported Languages (in priority order):
-# 1. Rust      - Primary language for high-performance services
-# 2. Go        - Backend microservices and infrastructure
-# 3. Python    - ML/Data services, scripting, and DevOps tools
-# 4. TypeScript - Web clients, Node.js services, and dev tools
-# 5. Java      - Enterprise integration and legacy system support
+# 1. Rust      - Primary language, client-only with no_server option
+# 2. Go        - Client stubs only (server stubs generated but unused)
+# 3. Python    - Client stubs only (server stubs generated but unused)
+# 4. TypeScript - Client code only (protobuf-ts generates clients by default)
+# 5. Java      - Client stubs only (server stubs generated but unused)
 #
 # Generated Output Structure:
-# - clients/rust/         → Rust crates (Tonic + Prost)
-# - clients/go/           → Go packages
-# - clients/python/       → Python packages
-# - clients/typescript/   → TypeScript/JavaScript packages  
-# - clients/java/         → Java packages
+# - clients/rust/         → Rust crates (Tonic + Prost, client-only)
+# - clients/go/           → Go packages (use client stubs only)
+# - clients/python/       → Python packages (use client stubs only)
+# - clients/typescript/   → TypeScript/JavaScript packages (client-only)
+# - clients/java/         → Java packages (use client stubs only)
 # - docs/api/             → Generated documentation
 # =============================================================================
 
@@ -84,8 +85,10 @@ plugins:
     opt:
       - paths=source_relative
   
-  # Go: gRPC service definitions (protoc-gen-go-grpc v1.5.1 - September 2024)
+  # Go: gRPC client stubs (protoc-gen-go-grpc v1.5.1 - September 2024)
   # Compatible with google.golang.org/grpc v1.68.x
+  # Note: Go plugin generates both client and server stubs. Server stubs are
+  # interfaces only and should not be implemented - use client stubs only.
   - remote: buf.build/grpc/go:v1.5.1
     out: clients/go
     opt:
@@ -102,8 +105,9 @@ plugins:
   - remote: buf.build/protocolbuffers/python:v28.3
     out: clients/python
   
-  # Python: gRPC service stubs (grpcio v1.68.1 - November 2024)
+  # Python: gRPC client stubs (grpcio v1.68.1 - November 2024)
   # Compatible with grpcio>=1.68.0
+  # Note: Python plugin generates both client and server stubs - use client stubs only.
   - remote: buf.build/grpc/python:v1.68.1
     out: clients/python
   
@@ -128,6 +132,7 @@ plugins:
   - remote: buf.build/protocolbuffers/java:v28.3
     out: clients/java
   
-  # Java: gRPC service stubs (grpc-java v1.68.1 - November 2024)
+  # Java: gRPC client stubs (grpc-java v1.68.1 - November 2024)
+  # Note: Java plugin generates both client and server stubs - use client stubs only.
   - remote: buf.build/grpc/java:v1.68.1
     out: clients/java
