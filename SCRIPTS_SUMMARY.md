@@ -81,6 +81,14 @@ Windows users will receive helpful instructions if running in an incompatible en
    - Verifies package files (pyproject.toml, package.json, pom.xml)
    - Usage: `make validate-structure`
 
+### Note on Go and Java
+
+Go and Java don't have dedicated generation scripts because they only need `buf generate`:
+- **Go**: Uses `buf generate` directly (handled by Makefile)
+- **Java**: Uses `buf generate` directly (handled by Makefile)
+
+These languages don't require additional post-generation steps like building or formatting that Python, Rust, and TypeScript need. The generation is automatically managed by `buf.gen.yaml` configuration.
+
 ## 📦 Client Structure
 
 ### Principle: Proto → Client Mapping
