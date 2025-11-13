@@ -1,0 +1,50 @@
+# {{SERVICE_NAME_TITLE}} Service
+
+{{SERVICE_DESCRIPTION}}
+
+## Overview
+
+This package contains the Protocol Buffer definitions for the {{SERVICE_NAME_TITLE}} service.
+
+## Files
+
+- **{{SERVICE_FILE}}.proto** - Core service definitions
+- **health.proto** - Health check definitions (if needed)
+
+## Usage
+
+Import this service in your proto files:
+
+```protobuf
+import "{{SERVICE_NAME}}/v1/{{SERVICE_FILE}}.proto";
+```
+
+## gRPC Services
+
+This package defines the following services:
+
+- **{{SERVICE_NAME_TITLE}}Service** - Main service interface
+
+## Message Types
+
+Key message types defined in this package:
+
+- **{{MESSAGE_PREFIX}}Request** - Request message
+- **{{MESSAGE_PREFIX}}Response** - Response message
+
+## Versioning
+
+Current version: **v1**
+
+Breaking changes will require a new version (v2, v3, etc.).
+
+## Generated Clients
+
+Clients are automatically generated for:
+- **Rust** (primary language)
+- **Go**
+- **Python**
+- **TypeScript**
+- **Java**
+
+Use `make generate` to regenerate clients after proto changes.

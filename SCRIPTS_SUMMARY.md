@@ -81,6 +81,16 @@ Windows users will receive helpful instructions if running in an incompatible en
    - Verifies package files (pyproject.toml, package.json, pom.xml)
    - Usage: `make validate-structure`
 
+9. **`add_service.sh`** - Interactive service template generator
+   - ✨ **Interactive wizard** for creating new service packages
+   - Prompts for service name, description, version, and entity name
+   - Validates inputs (naming, duplicates, reserved names)
+   - Generates proto files from templates with variable substitution
+   - Creates README documentation
+   - Auto-discovered by all build scripts
+   - Cross-platform with Windows compatibility checks
+   - Usage: `make add-service` or `./scripts/add_service.sh`
+
 ### Note on Go and Java
 
 Go and Java don't have dedicated generation scripts because they only need `buf generate`:
