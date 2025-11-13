@@ -24,9 +24,10 @@ fi
 
 echo -e "${GREEN}✓ cargo found${NC}"
 
-# Generate Rust code using buf (buf.gen.yaml has output paths)
+# NOTE: Rust code generation is handled by build.rs during cargo build
+# The build.rs script uses tonic-build to compile proto files
 echo -e "${BLUE}Generating Rust proto code...${NC}"
-buf generate
+echo -e "${GREEN}✓ Code will be generated during cargo build via build.rs${NC}"
 
 # Build all Rust clients
 echo -e "\n${BLUE}Building Rust workspace...${NC}"
@@ -36,7 +37,7 @@ cd "$RUST_DIR"
 echo -e "${BLUE}Updating dependencies...${NC}"
 cargo update
 
-# Build all clients
+# Build all clients (this triggers build.rs which generates the proto code)
 echo -e "${BLUE}Building all clients...${NC}"
 cargo build --workspace
 

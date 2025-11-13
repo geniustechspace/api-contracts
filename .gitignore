@@ -1,40 +1,144 @@
-# Generated clients
+# =============================================================================
+# Generated Code - Never commit generated proto code
+# =============================================================================
+# All client code is generated from proto files via `buf generate`
+# Only commit proto source files, not generated code
+
+# Generated Go files
+clients/go/**/*.pb.go
+clients/go/**/*_grpc.pb.go
+clients/go/**/validate.pb.go
+
+# Generated Python files
+clients/python/**/*_pb2.py
+clients/python/**/*_pb2.pyi
+clients/python/**/*_pb2_grpc.py
+clients/python/**/v1/
+clients/python/validate/
+
+# Generated Rust files
+clients/rust/**/*.rs
+!clients/rust/**/src/lib.rs
+!clients/rust/**/src/main.rs
+!clients/rust/**/build.rs
+clients/rust/*.rs
+
+# Generated TypeScript files
+clients/typescript/packages/**/*.ts
+!clients/typescript/packages/**/index.ts
+clients/typescript/packages/**/proto/
+
+# Generated Java files
+clients/java/com/
+clients/java/io/
+
+# Generated proto files in clients
 clients/*/proto/
+clients/*/gen/
+clients/*/generated/
+
+# =============================================================================
+# Build Artifacts
+# =============================================================================
+
+# Rust
 clients/rust/target/
 clients/rust/Cargo.lock
+rust/target/
+target/
+**/target/
+
+# Go
 clients/go/vendor/
+clients/go/**/vendor/
+*.sum
+
+# Python
 clients/python/__pycache__/
+clients/python/**/__pycache__/
 clients/python/*.egg-info/
+clients/python/**/*.egg-info/
 clients/python/dist/
 clients/python/build/
+clients/python/**/dist/
+clients/python/**/build/
+*.pyc
+*.pyo
+*.pyd
+.Python
+__pycache__/
+*.py[cod]
+*$py.class
+
+# TypeScript/JavaScript
 clients/typescript/node_modules/
 clients/typescript/dist/
-clients/java/target/
+clients/typescript/**/node_modules/
+clients/typescript/**/dist/
+node_modules/
+dist/
+*.tsbuildinfo
 
-# Generated documentation
+# Java
+clients/java/target/
+clients/java/**/target/
+*.class
+
+# Distribution artifacts
+dist/
+build/
+*.whl
+*.tar.gz
+*.egg
+
+# =============================================================================
+# Generated Documentation
+# =============================================================================
 docs/api/api.md
 docs/api/index.html
 docs/openapi/
 
-# IDE
+# =============================================================================
+# IDE & Editor
+# =============================================================================
 .idea/
 .vscode/
 *.swp
 *.swo
 *~
 .DS_Store
+*.iml
 
+# =============================================================================
 # OS
+# =============================================================================
+.DS_Store
 Thumbs.db
+desktop.ini
 
-# Temporary files
+# =============================================================================
+# Temporary Files
+# =============================================================================
 *.tmp
 *.bak
 *.log
+*.cache
+.cache/
 
-# Build artifacts
-*.o
-*.so
-*.dylib
-*.dll
-*.exe
+# =============================================================================
+# Environment & Config
+# =============================================================================
+.env
+.env.local
+.env.*.local
+*.local
+
+# =============================================================================
+# Test Coverage
+# =============================================================================
+coverage/
+.coverage
+htmlcov/
+*.cover
+.pytest_cache/
+.tox/

@@ -8,10 +8,10 @@ on:
   workflow_dispatch:
 
 env:
-  BUF_VERSION: "1.28.1"
-  RUST_VERSION: "1.75.0"
-  PYTHON_VERSION: "3.11"
-  NODE_VERSION: "20"
+  BUF_VERSION: "1.47.2"  # Updated to support v2 configuration format (requires >= 1.32.0)
+  RUST_VERSION: "1.83.0"  # Latest stable Rust (November 2024)
+  PYTHON_VERSION: "3.12"  # Latest stable Python
+  NODE_VERSION: "22"      # Latest LTS Node.js
 
 jobs:
   lint-proto:
@@ -31,6 +31,13 @@ jobs:
       - name: Check Breaking Changes
         if: github.event_name == 'pull_request'
         run: |
+          # Fetch the main branch for comparison
+          git fetch origin main:main 2>/dev/null || {
+            echo "Main branch does not exist yet, skipping breaking change detection"
+            echo "Breaking change detection will be enabled once the main branch is created"
+            exit 0
+          }
+          # Run breaking change detection against fetched main branch
           buf breaking --against '.git#branch=main'
 
   generate-and-build:
@@ -50,12 +57,17 @@ jobs:
 
       - name: Setup Rust
         if: matrix.language == 'rust'
-        uses: actions-rs/toolchain@v1
+        uses: dtolnay/rust-toolchain@stable
         with:
           toolchain: ${{ env.RUST_VERSION }}
-          profile: minimal
-          override: true
           components: rustfmt, clippy
+
+      - name: Install protoc
+        if: matrix.language == 'rust'
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y protobuf-compiler
+          protoc --version
 
       - name: Setup Python
         if: matrix.language == 'python'
@@ -77,27 +89,27 @@ jobs:
 
       - name: Cache Rust dependencies
         if: matrix.language == 'rust'
-        uses: actions/cache@v3
+        uses: actions/cache@v4
         with:
           path: |
             ~/.cargo/registry
             ~/.cargo/git
-            rust/target
+            clients/rust/target
           key: ${{ runner.os }}-cargo-${{ hashFiles('**/Cargo.lock') }}
 
       - name: Cache Python dependencies
         if: matrix.language == 'python'
-        uses: actions/cache@v3
+        uses: actions/cache@v4
         with:
           path: ~/.cache/pip
           key: ${{ runner.os }}-pip-${{ hashFiles('**/pyproject.toml') }}
 
       - name: Cache Node.js dependencies
         if: matrix.language == 'typescript'
-        uses: actions/cache@v3
+        uses: actions/cache@v4
         with:
-          path: ts/node_modules
-          key: ${{ runner.os }}-node-${{ hashFiles('ts/pnpm-lock.yaml') }}
+          path: clients/typescript/node_modules
+          key: ${{ runner.os }}-node-${{ hashFiles('clients/typescript/pnpm-lock.yaml') }}
 
       - name: Generate All Clients
         run: buf generate
@@ -123,13 +135,13 @@ jobs:
       - name: Run Rust Tests
         if: matrix.language == 'rust'
         run: |
-          cd rust
+          cd clients/rust
           cargo test --workspace
 
       - name: Run Rust Clippy
         if: matrix.language == 'rust'
         run: |
-          cd rust
+          cd clients/rust
           cargo clippy --workspace --all-targets -- -D warnings
 
       - name: Run Python Tests
@@ -142,17 +154,17 @@ jobs:
       - name: Run TypeScript Tests
         if: matrix.language == 'typescript'
         run: |
-          cd ts
+          cd clients/typescript
           pnpm test || echo "No tests configured yet"
 
       - name: Upload Artifacts
-        uses: actions/upload-artifact@v3
+        uses: actions/upload-artifact@v4
         with:
           name: ${{ matrix.language }}-clients
           path: |
-            rust/target/release/*.rlib
-            python/dist/*.whl
-            ts/packages/*/dist
+            clients/rust/target/release/*.rlib
+            clients/python/*/dist/*.whl
+            clients/typescript/packages/*/dist
 
   publish-rust:
     name: Publish Rust Crates
@@ -163,17 +175,15 @@ jobs:
       - uses: actions/checkout@v4
 
       - name: Setup Rust
-        uses: actions-rs/toolchain@v1
+        uses: dtolnay/rust-toolchain@stable
         with:
           toolchain: ${{ env.RUST_VERSION }}
-          profile: minimal
-          override: true
 
       - name: Publish to crates.io
         env:
           CARGO_REGISTRY_TOKEN: ${{ secrets.CARGO_REGISTRY_TOKEN }}
         run: |
-          cd rust
+          cd clients/rust
           # Publish in dependency order
           cargo publish -p auth-client --allow-dirty || true
           cargo publish -p accounts-client --allow-dirty || true
@@ -198,7 +208,7 @@ jobs:
 
       - name: Build packages
         run: |
-          for dir in python/*/; do
+          for dir in clients/python/*/; do
             if [ -f "$dir/pyproject.toml" ]; then
               cd "$dir"
               python -m build
@@ -211,7 +221,7 @@ jobs:
           TWINE_USERNAME: __token__
           TWINE_PASSWORD: ${{ secrets.PYPI_API_TOKEN }}
         run: |
-          twine upload python/*/dist/*.whl python/*/dist/*.tar.gz || true
+          twine upload clients/python/*/dist/*.whl clients/python/*/dist/*.tar.gz || true
 
   publish-npm:
     name: Publish NPM Packages
@@ -234,17 +244,17 @@ jobs:
 
       - name: Install dependencies
         run: |
-          cd ts
+          cd clients/typescript
           pnpm install
 
       - name: Build packages
         run: |
-          cd ts
+          cd clients/typescript
           pnpm build
 
       - name: Publish to NPM
         env:
           NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
         run: |
-          cd ts
+          cd clients/typescript
           pnpm publish -r --access public --no-git-checks || true

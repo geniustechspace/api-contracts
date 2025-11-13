@@ -116,15 +116,9 @@ api-contracts/
 │   │   ├── errors.proto               # Standard error handling
 │   │   ├── audit.proto                # Audit logging
 │   │   ├── metadata.proto             # Standard metadata
-│   │   └── health.proto               # Health checks
-│   ├── common/v1/                      # Shared business types
-│   │   ├── types.proto                # Common data types
-│   │   ├── enums.proto                # Common enumerations
+│   │   ├── health.proto               # Health checks
 │   │   ├── pagination.proto           # Pagination patterns
-│   │   ├── search.proto               # Search & filtering
-│   │   ├── money.proto                # Currency types
-│   │   ├── geography.proto            # Location types
-│   │   └── datetime.proto             # Temporal types
+│   │   └── types.proto                # Common data types (email, phone, address)
 │   ├── idp/v1/                        # Identity Provider
 │   │   ├── auth/                      # Authentication
 │   │   ├── user/                      # User management

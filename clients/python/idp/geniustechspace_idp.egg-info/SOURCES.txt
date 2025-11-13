@@ -1,7 +1,0 @@
-pyproject.toml
-geniustechspace_idp.egg-info/PKG-INFO
-geniustechspace_idp.egg-info/SOURCES.txt
-geniustechspace_idp.egg-info/dependency_links.txt
-geniustechspace_idp.egg-info/requires.txt
-geniustechspace_idp.egg-info/top_level.txt
-v1/__init__.py
