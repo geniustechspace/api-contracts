@@ -12,12 +12,10 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         .canonicalize()?;
 
     let proto_root = project_root.join("proto");
+    let core_proto_dir = proto_root.join("core");
 
     // Tell cargo to rerun if proto files or buf configuration change
-    println!(
-        "cargo:rerun-if-changed={}",
-        proto_root.join("core").display()
-    );
+    println!("cargo:rerun-if-changed={}", core_proto_dir.display());
     println!(
         "cargo:rerun-if-changed={}",
         project_root.join("buf.yaml").display()
@@ -27,21 +25,20 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         project_root.join("buf.lock").display()
     );
 
-    // List all proto files explicitly for cargo rebuild detection
-    for proto_file in &[
-        "core/v1/tenant.proto",
-        "core/v1/context.proto",
-        "core/v1/errors.proto",
-        "core/v1/metadata.proto",
-        "core/v1/audit.proto",
-        "core/v1/health.proto",
-        "core/v1/pagination.proto",
-        "core/v1/types.proto",
-    ] {
-        println!(
-            "cargo:rerun-if-changed={}",
-            proto_root.join(proto_file).display()
+    // Automatically discover all .proto files in the core directory
+    let proto_files = discover_proto_files(&core_proto_dir)?;
+
+    if proto_files.is_empty() {
+        eprintln!(
+            "cargo:warning=No .proto files found in {}",
+            core_proto_dir.display()
         );
+        return Err("No proto files found".into());
+    }
+
+    // List all discovered proto files for cargo rebuild detection
+    for proto_file in &proto_files {
+        println!("cargo:rerun-if-changed={}", proto_file.display());
     }
 
     // Export buf dependencies to a temporary directory
@@ -70,22 +67,42 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         eprintln!("cargo:warning=Install buf from https://docs.buf.build/installation");
     }
 
-    // Compile all core proto files
+    // Compile all discovered core proto files
     tonic_build::configure()
         .build_server(false) // Client-only code generation
-        .compile_protos(
-            &[
-                proto_root.join("core/v1/tenant.proto"),
-                proto_root.join("core/v1/context.proto"),
-                proto_root.join("core/v1/errors.proto"),
-                proto_root.join("core/v1/metadata.proto"),
-                proto_root.join("core/v1/audit.proto"),
-                proto_root.join("core/v1/health.proto"),
-                proto_root.join("core/v1/pagination.proto"),
-                proto_root.join("core/v1/types.proto"),
-            ],
-            &include_dirs,
-        )?;
+        .compile_protos(&proto_files, &include_dirs)?;
 
+    Ok(())
+}
+
+/// Recursively discover all .proto files in a directory
+fn discover_proto_files(dir: &PathBuf) -> Result<Vec<PathBuf>, Box<dyn std::error::Error>> {
+    let mut proto_files = Vec::new();
+
+    if !dir.exists() {
+        return Err(format!("Directory does not exist: {}", dir.display()).into());
+    }
+
+    visit_dirs(dir, &mut proto_files)?;
+
+    // Sort for consistent ordering
+    proto_files.sort();
+
+    Ok(proto_files)
+}
+
+/// Recursively visit directories to find .proto files
+fn visit_dirs(dir: &PathBuf, proto_files: &mut Vec<PathBuf>) -> std::io::Result<()> {
+    if dir.is_dir() {
+        for entry in std::fs::read_dir(dir)? {
+            let entry = entry?;
+            let path = entry.path();
+            if path.is_dir() {
+                visit_dirs(&path, proto_files)?;
+            } else if path.extension().and_then(|s| s.to_str()) == Some("proto") {
+                proto_files.push(path);
+            }
+        }
+    }
     Ok(())
 }
