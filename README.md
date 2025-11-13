@@ -481,10 +481,23 @@ This project supports the following compliance frameworks:
 
 ## 🔄 Versioning
 
-- **Proto Versioning**: Directory-based (`v1/`, `v2/`, etc.)
-- **Client Versioning**: Semantic versioning (SemVer)
-- **Breaking Changes**: Require new version number
-- **Tags**: Format `v<major>.<minor>.<patch>` (e.g., `v1.0.0`)
+We use a **dual versioning strategy** that combines directory-based API versioning with Buf's module versioning:
+
+- **Proto API Versioning**: Directory-based (`v1/`, `v2/`, etc.) for API evolution
+  - Enables multiple API versions to coexist
+  - Allows smooth client migration without breaking changes
+  - Industry standard (used by Google, Kubernetes, etc.)
+  
+- **Module Versioning**: Semantic versioning (SemVer) via Buf for releases
+  - Tags: Format `v<major>.<minor>.<patch>` (e.g., `v1.0.0`)
+  - Breaking changes in API require new directory (v2) AND new major version (v2.0.0)
+  - Buf tracks module dependencies and ensures reproducible builds
+
+**Why both?** They solve different problems:
+- Directory versioning = API contract evolution (runtime coexistence)
+- Buf versioning = Module release management (dependency tracking)
+
+See [Versioning Strategy](docs/architecture/versioning-strategy.md) for detailed explanation.
 
 ---
 

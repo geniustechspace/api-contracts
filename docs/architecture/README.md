@@ -11,7 +11,7 @@ Details on how the monorepo is organized for proto definitions and multi-languag
 How client code is generated from proto files for each supported language.
 
 ### [Versioning Strategy](versioning-strategy.md)
-API versioning approach and backward compatibility guarantees.
+API versioning approach and backward compatibility guarantees. **Important**: Explains why we use both directory-based (v1/, v2/) and Buf versioning - they serve different purposes and both are necessary.
 
 ### [Multitenancy Architecture](multitenancy-architecture.md)
 Deep dive into the multitenancy model and tenant isolation.
@@ -40,10 +40,16 @@ Each language uses its native workspace/monorepo tooling:
 - TypeScript: npm workspaces
 - Java: Maven multi-module project
 
-### 5. Strict Versioning
-- Proto packages use directory-based versioning (v1, v2, etc.)
-- Clients use semantic versioning
-- Breaking changes require a new major version or proto package
+### 5. Dual Versioning Strategy
+- **Proto API Versioning**: Directory-based (v1, v2, etc.) for API evolution
+  - Enables multiple API versions to coexist
+  - Allows gradual client migration
+  - Industry standard approach
+- **Module Versioning**: Semantic versioning via Buf for releases
+  - Tracks module changes over time
+  - Manages dependencies
+  - Ensures reproducible builds
+- **Both are necessary** - they serve different purposes (see [Versioning Strategy](versioning-strategy.md))
 
 ### 6. Enterprise Standards
 - Comprehensive documentation requirements
