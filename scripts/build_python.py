@@ -43,6 +43,20 @@ def run_command(cmd, cwd=None):
     except subprocess.CalledProcessError as e:
         return False, e.stderr
 
+def discover_proto_modules(workspace_root):
+    """Discover proto modules by scanning the proto/ directory."""
+    proto_dir = workspace_root / "proto"
+    modules = []
+    
+    if not proto_dir.exists():
+        return modules
+    
+    for item in proto_dir.iterdir():
+        if item.is_dir() and not item.name.startswith('.'):
+            modules.append(item.name)
+    
+    return modules
+
 def main():
     # Get script directory and workspace root
     script_dir = Path(__file__).parent
@@ -56,12 +70,13 @@ def main():
     
     print_section("Building Python Packages for Distribution")
     
+    # Auto-discover packages from proto modules
+    packages = discover_proto_modules(workspace_root)
+    print(f"Discovered proto modules: {', '.join(packages)}\n")
+    
     # Create dist directory
     dist_dir.mkdir(parents=True, exist_ok=True)
     print(f"Output directory: {dist_dir}\n")
-    
-    # Packages to build (validate is from pip, not built locally)
-    packages = ["core", "idp", "notification"]
     
     built_packages = []
     failed_packages = []

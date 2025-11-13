@@ -1,62 +1,78 @@
 #!/bin/bash
 set -e
 
-# Colors for output
-GREEN='\033[0;32m'
-BLUE='\033[0;34m'
-RED='\033[0;31m'
-NC='\033[0m' # No Color
-
-echo -e "${BLUE}=== Generating Rust Clients ===${NC}\n"
-
 # Get script directory
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-ROOT_DIR="$(dirname "$SCRIPT_DIR")"
+
+# Source common utilities
+source "$SCRIPT_DIR/common.sh"
+
+# Check Windows compatibility
+check_windows_compatibility || exit 1
+
+# Get directories
+ROOT_DIR=$(get_root_dir)
 RUST_DIR="$ROOT_DIR/clients/rust"
+
+# Discover proto modules
+PROTO_MODULES=($(discover_proto_modules "$ROOT_DIR"))
+
+print_section "Generating Rust Clients"
+print_info "Discovered modules: ${PROTO_MODULES[*]}"
+echo ""
 
 cd "$ROOT_DIR"
 
 # Check prerequisites
-if ! command -v cargo &> /dev/null; then
-    echo -e "${RED}Error: cargo is not installed${NC}"
+if ! command_exists cargo; then
+    print_error "cargo is not installed"
     exit 1
 fi
 
-echo -e "${GREEN}✓ cargo found${NC}"
+print_success "cargo found"
 
 # NOTE: Rust code generation is handled by build.rs during cargo build
 # The build.rs script uses tonic-build to compile proto files
-echo -e "${BLUE}Generating Rust proto code...${NC}"
-echo -e "${GREEN}✓ Code will be generated during cargo build via build.rs${NC}"
+print_info "Generating Rust proto code..."
+print_success "Code will be generated during cargo build via build.rs"
 
 # Build all Rust clients
-echo -e "\n${BLUE}Building Rust workspace...${NC}"
+echo ""
+print_info "Building Rust workspace..."
 cd "$RUST_DIR"
 
 # Update Cargo workspace if needed
-echo -e "${BLUE}Updating dependencies...${NC}"
+print_info "Updating dependencies..."
 cargo update
 
 # Build all clients (this triggers build.rs which generates the proto code)
-echo -e "${BLUE}Building all clients...${NC}"
+print_info "Building all clients..."
 cargo build --workspace
 
 # Run tests if they exist
 if cargo test --workspace --no-run &> /dev/null; then
-    echo -e "\n${BLUE}Running tests...${NC}"
+    echo ""
+    print_info "Running tests..."
     cargo test --workspace
 fi
 
 # Format code
-if command -v cargo-fmt &> /dev/null || cargo fmt --version &> /dev/null; then
-    echo -e "\n${BLUE}Formatting code...${NC}"
+if command_exists cargo-fmt || cargo fmt --version &> /dev/null 2>&1; then
+    echo ""
+    print_info "Formatting code..."
     cargo fmt --all
 fi
 
 # Run clippy if available
-if command -v cargo-clippy &> /dev/null || cargo clippy --version &> /dev/null; then
-    echo -e "\n${BLUE}Running clippy...${NC}"
-    cargo clippy --workspace --all-targets -- -D warnings || echo -e "${RED}Clippy warnings found${NC}"
+if command_exists cargo-clippy || cargo clippy --version &> /dev/null 2>&1; then
+    echo ""
+    print_info "Running clippy..."
+    if cargo clippy --workspace --all-targets -- -D warnings; then
+        print_success "Clippy checks passed"
+    else
+        print_warning "Clippy warnings found"
+    fi
 fi
 
-echo -e "\n${GREEN}✓ Rust clients generated and built successfully!${NC}"
+echo ""
+print_success "Rust clients generated and built successfully!"
