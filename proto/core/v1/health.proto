@@ -34,25 +34,52 @@ option java_outer_classname = "HealthProto";
 service HealthService {
   // Check performs a health check.
   // Returns the current health status of the service.
-  rpc Check(HealthCheckRequest) returns (HealthCheckResponse);
+  rpc Check(CheckRequest) returns (CheckResponse);
 
   // Watch performs a streaming health check.
   // Continuously streams health status updates.
-  rpc Watch(HealthCheckRequest) returns (stream HealthCheckResponse);
+  rpc Watch(WatchRequest) returns (stream WatchResponse);
 }
 
 // =============================================================================
 // Health Check Request/Response
 // =============================================================================
 
-// HealthCheckRequest is used to query service health.
-message HealthCheckRequest {
+// CheckRequest is used to query service health.
+message CheckRequest {
   // Service name to check (empty for overall health).
   string service = 1 [(validate.rules).string.max_len = 128];
 }
 
-// HealthCheckResponse returns the health status of a service.
-message HealthCheckResponse {
+// CheckResponse returns the health status of a service.
+message CheckResponse {
+  // Overall health status.
+  HealthStatus status = 1;
+
+  // Service name being checked.
+  string service = 2;
+
+  // Timestamp of the health check.
+  google.protobuf.Timestamp timestamp = 3;
+
+  // Health checks for individual components.
+  repeated ComponentHealth components = 4;
+
+  // Version information.
+  VersionInfo version = 5;
+
+  // Additional health metadata.
+  map<string, string> metadata = 10;
+}
+
+// WatchRequest is used to watch service health changes.
+message WatchRequest {
+  // Service name to watch (empty for overall health).
+  string service = 1 [(validate.rules).string.max_len = 128];
+}
+
+// WatchResponse streams health status updates.
+message WatchResponse {
   // Overall health status.
   HealthStatus status = 1;
 
@@ -78,8 +105,8 @@ message HealthCheckResponse {
 
 // HealthStatus indicates the health state of a service or component.
 enum HealthStatus {
-  // Status is unknown.
-  HEALTH_STATUS_UNKNOWN = 0;
+  // Status is unspecified.
+  HEALTH_STATUS_UNSPECIFIED = 0;
 
   // Service is healthy and accepting traffic.
   HEALTH_STATUS_HEALTHY = 1;

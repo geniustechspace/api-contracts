@@ -41,9 +41,13 @@ message EmailAddress {
 
 // EmailType categorizes email addresses.
 enum EmailType {
+  // Unspecified email type.
   EMAIL_TYPE_UNSPECIFIED = 0;
+  // Personal email address.
   EMAIL_TYPE_PERSONAL = 1;
+  // Work email address.
   EMAIL_TYPE_WORK = 2;
+  // Other email address type.
   EMAIL_TYPE_OTHER = 3;
 }
 
@@ -67,11 +71,17 @@ message PhoneNumber {
 
 // PhoneType categorizes phone numbers.
 enum PhoneType {
+  // Unspecified phone type.
   PHONE_TYPE_UNSPECIFIED = 0;
+  // Mobile phone number.
   PHONE_TYPE_MOBILE = 1;
+  // Home phone number.
   PHONE_TYPE_HOME = 2;
+  // Work phone number.
   PHONE_TYPE_WORK = 3;
+  // Fax number.
   PHONE_TYPE_FAX = 4;
+  // Other phone type.
   PHONE_TYPE_OTHER = 5;
 }
 
@@ -123,11 +133,17 @@ message Address {
 
 // AddressType categorizes addresses.
 enum AddressType {
+  // Unspecified address type.
   ADDRESS_TYPE_UNSPECIFIED = 0;
+  // Home address.
   ADDRESS_TYPE_HOME = 1;
+  // Work address.
   ADDRESS_TYPE_WORK = 2;
+  // Billing address.
   ADDRESS_TYPE_BILLING = 3;
+  // Shipping address.
   ADDRESS_TYPE_SHIPPING = 4;
+  // Other address type.
   ADDRESS_TYPE_OTHER = 5;
 }
 
@@ -174,11 +190,18 @@ message Status {
 
 // StatusCode represents common status codes.
 enum StatusCode {
+  // Unspecified status code.
   STATUS_CODE_UNSPECIFIED = 0;
+  // Active status.
   STATUS_CODE_ACTIVE = 1;
+  // Inactive status.
   STATUS_CODE_INACTIVE = 2;
+  // Pending status.
   STATUS_CODE_PENDING = 3;
+  // Completed status.
   STATUS_CODE_COMPLETED = 4;
+  // Failed status.
   STATUS_CODE_FAILED = 5;
+  // Cancelled status.
   STATUS_CODE_CANCELLED = 6;
 }
