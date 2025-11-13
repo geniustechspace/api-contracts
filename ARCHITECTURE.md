@@ -331,7 +331,11 @@ python/notification/pyproject.toml
 
 ## Versioning
 
-### Proto Versioning
+This repository uses a **dual versioning strategy** combining Proto API versioning with Buf module versioning.
+
+### Proto API Versioning (Directory-Based)
+
+**Purpose**: API contract evolution and runtime coexistence of multiple versions
 
 Directory-based versioning:
 
@@ -346,7 +350,14 @@ Rules:
 - **Breaking changes**: Create v2
 - **Non-breaking additions**: Add to v1
 
-### Client Versioning
+**Benefits**:
+- Multiple API versions coexist in the same service
+- Smooth client migration without forced upgrades
+- Industry standard approach (Google, Kubernetes, etc.)
+
+### Module Versioning (Buf/SemVer)
+
+**Purpose**: Module release management and dependency tracking
 
 Semantic versioning (SemVer):
 
@@ -355,8 +366,26 @@ v0.1.0  # Initial development
 v1.0.0  # First stable release
 v1.1.0  # New features (backward compatible)
 v1.1.1  # Bug fixes
-v2.0.0  # Breaking changes
+v2.0.0  # Breaking changes (usually includes new v2 directory)
 ```
+
+**Benefits**:
+- Tracks changes over time
+- Manages dependencies between modules
+- Ensures reproducible builds
+- CI/CD integration with breaking change detection
+
+### Why Both?
+
+**Directory versioning and Buf versioning serve different purposes:**
+- **Directory versioning** = API contract versions (v1 vs v2 APIs that can run together)
+- **Buf versioning** = Module release versions (v1.2.3 vs v1.2.4 releases)
+
+This is NOT redundant - they complement each other:
+- Buf ensures safe builds and dependency management
+- Directory versioning enables API evolution without breaking clients
+
+**See [Versioning Strategy](docs/architecture/versioning-strategy.md) for detailed explanation.**
 
 ## Build System
 
