@@ -1,47 +1,56 @@
 #!/bin/bash
 set -e
 
-# Colors for output
-GREEN='\033[0;32m'
-BLUE='\033[0;34m'
-RED='\033[0;31m'
-NC='\033[0m' # No Color
-
-echo -e "${BLUE}=== Generating TypeScript Clients ===${NC}\n"
-
 # Get script directory
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-ROOT_DIR="$(dirname "$SCRIPT_DIR")"
+
+# Source common utilities
+source "$SCRIPT_DIR/common.sh"
+
+# Check Windows compatibility
+check_windows_compatibility || exit 1
+
+# Get directories
+ROOT_DIR=$(get_root_dir)
 TS_DIR="$ROOT_DIR/clients/typescript"
+
+# Discover proto modules
+PROTO_MODULES=($(discover_proto_modules "$ROOT_DIR"))
+
+print_section "Generating TypeScript Clients"
+print_info "Discovered modules: ${PROTO_MODULES[*]}"
+echo ""
 
 cd "$ROOT_DIR"
 
 # Check prerequisites
-if ! command -v node &> /dev/null; then
-    echo -e "${RED}Error: node is not installed${NC}"
+if ! command_exists node; then
+    print_error "node is not installed"
     exit 1
 fi
 
-echo -e "${GREEN}✓ node found${NC}"
+print_success "node found"
 
 # Check for pnpm (preferred) or npm
-if command -v pnpm &> /dev/null; then
+if command_exists pnpm; then
     PKG_MANAGER="pnpm"
-    echo -e "${GREEN}✓ Using pnpm${NC}"
-elif command -v npm &> /dev/null; then
+    print_success "Using pnpm"
+elif command_exists npm; then
     PKG_MANAGER="npm"
-    echo -e "${GREEN}✓ Using npm${NC}"
+    print_success "Using npm"
 else
-    echo -e "${RED}Error: Neither pnpm nor npm is installed${NC}"
+    print_error "Neither pnpm nor npm is installed"
     exit 1
 fi
 
 # Generate TypeScript code using buf (buf.gen.yaml has output paths)
-echo -e "${BLUE}Generating TypeScript proto code...${NC}"
+echo ""
+print_info "Generating TypeScript proto code..."
 buf generate
 
 # Install dependencies
-echo -e "\n${BLUE}Installing TypeScript dependencies...${NC}"
+echo ""
+print_info "Installing TypeScript dependencies..."
 cd "$TS_DIR"
 
 if [ ! -d "node_modules" ]; then
@@ -49,17 +58,33 @@ if [ ! -d "node_modules" ]; then
 fi
 
 # Build all packages
-echo -e "\n${BLUE}Building TypeScript packages...${NC}"
-$PKG_MANAGER run build || echo -e "${RED}Build had some issues${NC}"
-
-# Type check
-echo -e "\n${BLUE}Type checking...${NC}"
-$PKG_MANAGER run typecheck || echo -e "${RED}Type checking found issues${NC}"
-
-# Format with prettier if available
-if command -v prettier &> /dev/null || $PKG_MANAGER exec prettier --version &> /dev/null 2>&1; then
-    echo -e "\n${BLUE}Formatting TypeScript code...${NC}"
-    $PKG_MANAGER exec prettier --write "packages/*/src/**/*.ts" || echo -e "${RED}Formatting had issues${NC}"
+echo ""
+print_info "Building TypeScript packages..."
+if $PKG_MANAGER run build 2>/dev/null; then
+    print_success "TypeScript packages built"
+else
+    print_warning "Build had some issues"
 fi
 
-echo -e "\n${GREEN}✓ TypeScript clients generated successfully!${NC}"
+# Type check
+echo ""
+print_info "Type checking..."
+if $PKG_MANAGER run typecheck 2>/dev/null; then
+    print_success "Type checking passed"
+else
+    print_warning "Type checking found issues"
+fi
+
+# Format with prettier if available
+if command_exists prettier || $PKG_MANAGER exec prettier --version &> /dev/null 2>&1; then
+    echo ""
+    print_info "Formatting TypeScript code..."
+    if $PKG_MANAGER exec prettier --write "packages/*/src/**/*.ts" 2>/dev/null; then
+        print_success "Code formatted with prettier"
+    else
+        print_warning "Formatting had issues"
+    fi
+fi
+
+echo ""
+print_success "TypeScript clients generated successfully!"
