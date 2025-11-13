@@ -9,9 +9,9 @@ on:
 
 env:
   BUF_VERSION: "1.47.2"  # Updated to support v2 configuration format (requires >= 1.32.0)
-  RUST_VERSION: "1.75.0"
-  PYTHON_VERSION: "3.11"
-  NODE_VERSION: "20"
+  RUST_VERSION: "1.83.0"  # Latest stable Rust (November 2024)
+  PYTHON_VERSION: "3.12"  # Latest stable Python
+  NODE_VERSION: "22"      # Latest LTS Node.js
 
 jobs:
   lint-proto:
