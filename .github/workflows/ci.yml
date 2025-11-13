@@ -87,7 +87,7 @@ jobs:
           path: |
             ~/.cargo/registry
             ~/.cargo/git
-            rust/target
+            clients/rust/target
           key: ${{ runner.os }}-cargo-${{ hashFiles('**/Cargo.lock') }}
 
       - name: Cache Python dependencies
@@ -101,8 +101,8 @@ jobs:
         if: matrix.language == 'typescript'
         uses: actions/cache@v4
         with:
-          path: ts/node_modules
-          key: ${{ runner.os }}-node-${{ hashFiles('ts/pnpm-lock.yaml') }}
+          path: clients/typescript/node_modules
+          key: ${{ runner.os }}-node-${{ hashFiles('clients/typescript/pnpm-lock.yaml') }}
 
       - name: Generate All Clients
         run: buf generate
@@ -128,13 +128,13 @@ jobs:
       - name: Run Rust Tests
         if: matrix.language == 'rust'
         run: |
-          cd rust
+          cd clients/rust
           cargo test --workspace
 
       - name: Run Rust Clippy
         if: matrix.language == 'rust'
         run: |
-          cd rust
+          cd clients/rust
           cargo clippy --workspace --all-targets -- -D warnings
 
       - name: Run Python Tests
@@ -147,7 +147,7 @@ jobs:
       - name: Run TypeScript Tests
         if: matrix.language == 'typescript'
         run: |
-          cd ts
+          cd clients/typescript
           pnpm test || echo "No tests configured yet"
 
       - name: Upload Artifacts
@@ -155,9 +155,9 @@ jobs:
         with:
           name: ${{ matrix.language }}-clients
           path: |
-            rust/target/release/*.rlib
-            python/dist/*.whl
-            ts/packages/*/dist
+            clients/rust/target/release/*.rlib
+            clients/python/*/dist/*.whl
+            clients/typescript/packages/*/dist
 
   publish-rust:
     name: Publish Rust Crates
@@ -176,7 +176,7 @@ jobs:
         env:
           CARGO_REGISTRY_TOKEN: ${{ secrets.CARGO_REGISTRY_TOKEN }}
         run: |
-          cd rust
+          cd clients/rust
           # Publish in dependency order
           cargo publish -p auth-client --allow-dirty || true
           cargo publish -p accounts-client --allow-dirty || true
@@ -201,7 +201,7 @@ jobs:
 
       - name: Build packages
         run: |
-          for dir in python/*/; do
+          for dir in clients/python/*/; do
             if [ -f "$dir/pyproject.toml" ]; then
               cd "$dir"
               python -m build
@@ -214,7 +214,7 @@ jobs:
           TWINE_USERNAME: __token__
           TWINE_PASSWORD: ${{ secrets.PYPI_API_TOKEN }}
         run: |
-          twine upload python/*/dist/*.whl python/*/dist/*.tar.gz || true
+          twine upload clients/python/*/dist/*.whl clients/python/*/dist/*.tar.gz || true
 
   publish-npm:
     name: Publish NPM Packages
@@ -237,17 +237,17 @@ jobs:
 
       - name: Install dependencies
         run: |
-          cd ts
+          cd clients/typescript
           pnpm install
 
       - name: Build packages
         run: |
-          cd ts
+          cd clients/typescript
           pnpm build
 
       - name: Publish to NPM
         env:
           NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
         run: |
-          cd ts
+          cd clients/typescript
           pnpm publish -r --access public --no-git-checks || true
