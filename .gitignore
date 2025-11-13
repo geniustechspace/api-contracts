@@ -44,9 +44,11 @@ clients/*/generated/
 # Rust
 clients/rust/target/
 clients/rust/Cargo.lock
+clients/rust/**/*.rlib
 rust/target/
 target/
 **/target/
+*.rlib
 
 # Go
 clients/go/vendor/
