@@ -10,7 +10,7 @@
 # Rust is the PRIMARY language for this project.
 # =============================================================================
 
-.PHONY: help setup install clean generate lint format test build check breaking deps update-deps validate
+.PHONY: help setup install clean generate lint format test build check breaking deps update-deps validate add-service
 .DEFAULT_GOAL := help
 
 # =============================================================================
@@ -25,6 +25,7 @@ help: ## Show this help message
 	@echo "  make install        - Install all dependencies (buf, rust, go, python, node)"
 	@echo "  make deps           - Download proto dependencies"
 	@echo "  make update-deps    - Update proto dependencies"
+	@echo "  make add-service    - Interactive tool to add a new service package"
 	@echo ""
 	@echo "🔨 Generation:"
 	@echo "  make generate       - Generate all clients (rust, go, python, typescript, java)"
@@ -100,6 +101,14 @@ deps: ## Download proto dependencies
 update-deps: ## Update proto dependencies
 	@echo "🔄 Updating proto dependencies..."
 	@buf dep update proto
+
+add-service: ## Interactive tool to add a new service package
+	@if [ -f scripts/add_service.sh ]; then \
+		./scripts/add_service.sh; \
+	else \
+		echo "⚠️  add_service.sh script not found"; \
+		exit 1; \
+	fi
 
 # =============================================================================
 # Code Generation

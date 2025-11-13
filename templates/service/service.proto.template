@@ -1,0 +1,248 @@
+// =============================================================================
+// {{SERVICE_NAME_TITLE}} Service - {{SERVICE_DESCRIPTION}}
+// =============================================================================
+// This file defines the gRPC service interface for {{SERVICE_NAME}}.
+//
+// Key Features:
+// - Enterprise multitenancy support via core.v1.TenantContext
+// - Standard error handling via core.v1.ErrorResponse
+// - Request/response context propagation
+// - Input validation with protoc-gen-validate
+//
+// Security:
+// - All requests require tenant context (x-tenant-id header)
+// - Authentication via gRPC metadata
+// - Authorization enforced per-tenant
+//
+// Usage:
+//   import "{{SERVICE_NAME}}/v1/{{SERVICE_FILE}}.proto";
+// =============================================================================
+
+syntax = "proto3";
+
+package {{SERVICE_NAME}}.v1;
+
+import "google/protobuf/timestamp.proto";
+import "google/protobuf/empty.proto";
+import "validate/validate.proto";
+import "core/v1/tenant.proto";
+import "core/v1/context.proto";
+import "core/v1/errors.proto";
+import "core/v1/pagination.proto";
+
+// Go: Backend services package
+option go_package = "github.com/geniustechspace/api-contracts/gen/go/{{SERVICE_NAME}}/v1;{{SERVICE_NAME}}v1";
+
+// Java: Enterprise integration package
+option java_package = "com.geniustechspace.api.{{SERVICE_NAME}}.v1";
+option java_multiple_files = true;
+option java_outer_classname = "{{SERVICE_NAME_TITLE}}Proto";
+
+// =============================================================================
+// {{SERVICE_NAME_TITLE}} Service
+// =============================================================================
+
+// {{SERVICE_NAME_TITLE}}Service provides {{SERVICE_DESCRIPTION_LOWER}}.
+service {{SERVICE_NAME_TITLE}}Service {
+  // Create a new {{ENTITY_NAME}}
+  rpc Create{{ENTITY_NAME}}(Create{{ENTITY_NAME}}Request) returns (Create{{ENTITY_NAME}}Response);
+
+  // Get a {{ENTITY_NAME}} by ID
+  rpc Get{{ENTITY_NAME}}(Get{{ENTITY_NAME}}Request) returns (Get{{ENTITY_NAME}}Response);
+
+  // List {{ENTITY_NAME}}s with pagination
+  rpc List{{ENTITY_NAME}}s(List{{ENTITY_NAME}}sRequest) returns (List{{ENTITY_NAME}}sResponse);
+
+  // Update an existing {{ENTITY_NAME}}
+  rpc Update{{ENTITY_NAME}}(Update{{ENTITY_NAME}}Request) returns (Update{{ENTITY_NAME}}Response);
+
+  // Delete a {{ENTITY_NAME}}
+  rpc Delete{{ENTITY_NAME}}(Delete{{ENTITY_NAME}}Request) returns (google.protobuf.Empty);
+
+  // Health check endpoint
+  rpc HealthCheck(google.protobuf.Empty) returns (HealthCheckResponse);
+}
+
+// =============================================================================
+// Core Message Types
+// =============================================================================
+
+// {{ENTITY_NAME}} represents the main entity in this service.
+message {{ENTITY_NAME}} {
+  // Unique identifier for the {{ENTITY_NAME_LOWER}}.
+  string id = 1 [(validate.rules).string.min_len = 1];
+
+  // Human-readable name.
+  string name = 2 [(validate.rules).string = {
+    min_len: 1,
+    max_len: 255
+  }];
+
+  // Optional description.
+  string description = 3 [(validate.rules).string.max_len = 1000];
+
+  // Current status.
+  {{ENTITY_NAME}}Status status = 4;
+
+  // Tenant context for multitenancy.
+  core.v1.TenantContext tenant_context = 10;
+
+  // Timestamp when created.
+  google.protobuf.Timestamp created_at = 20;
+
+  // Timestamp when last updated.
+  google.protobuf.Timestamp updated_at = 21;
+
+  // Timestamp when deleted (soft delete).
+  google.protobuf.Timestamp deleted_at = 22;
+}
+
+// {{ENTITY_NAME}}Status represents the operational state.
+enum {{ENTITY_NAME}}Status {
+  {{ENTITY_NAME_UPPER}}_STATUS_UNSPECIFIED = 0;
+  {{ENTITY_NAME_UPPER}}_STATUS_ACTIVE = 1;
+  {{ENTITY_NAME_UPPER}}_STATUS_INACTIVE = 2;
+  {{ENTITY_NAME_UPPER}}_STATUS_DELETED = 3;
+}
+
+// =============================================================================
+// Create Operations
+// =============================================================================
+
+// Request to create a new {{ENTITY_NAME}}.
+message Create{{ENTITY_NAME}}Request {
+  // Tenant context (required).
+  core.v1.TenantContext tenant_context = 1 [(validate.rules).message.required = true];
+
+  // Name of the {{ENTITY_NAME_LOWER}}.
+  string name = 2 [(validate.rules).string = {
+    min_len: 1,
+    max_len: 255
+  }];
+
+  // Optional description.
+  string description = 3 [(validate.rules).string.max_len = 1000];
+}
+
+// Response after creating a {{ENTITY_NAME}}.
+message Create{{ENTITY_NAME}}Response {
+  // The created {{ENTITY_NAME_LOWER}}.
+  {{ENTITY_NAME}} {{ENTITY_NAME_LOWER}} = 1;
+
+  // Request context for tracing.
+  core.v1.RequestContext context = 2;
+}
+
+// =============================================================================
+// Read Operations
+// =============================================================================
+
+// Request to get a {{ENTITY_NAME}} by ID.
+message Get{{ENTITY_NAME}}Request {
+  // Tenant context (required).
+  core.v1.TenantContext tenant_context = 1 [(validate.rules).message.required = true];
+
+  // ID of the {{ENTITY_NAME_LOWER}} to retrieve.
+  string id = 2 [(validate.rules).string.min_len = 1];
+}
+
+// Response containing the requested {{ENTITY_NAME}}.
+message Get{{ENTITY_NAME}}Response {
+  // The requested {{ENTITY_NAME_LOWER}}.
+  {{ENTITY_NAME}} {{ENTITY_NAME_LOWER}} = 1;
+
+  // Request context for tracing.
+  core.v1.RequestContext context = 2;
+}
+
+// Request to list {{ENTITY_NAME}}s.
+message List{{ENTITY_NAME}}sRequest {
+  // Tenant context (required).
+  core.v1.TenantContext tenant_context = 1 [(validate.rules).message.required = true];
+
+  // Pagination parameters.
+  core.v1.PaginationRequest pagination = 2;
+
+  // Optional filter by status.
+  {{ENTITY_NAME}}Status status_filter = 3;
+}
+
+// Response containing a list of {{ENTITY_NAME}}s.
+message List{{ENTITY_NAME}}sResponse {
+  // List of {{ENTITY_NAME_LOWER}}s.
+  repeated {{ENTITY_NAME}} {{ENTITY_NAME_LOWER}}s = 1;
+
+  // Pagination metadata.
+  core.v1.PaginationResponse pagination = 2;
+
+  // Request context for tracing.
+  core.v1.RequestContext context = 3;
+}
+
+// =============================================================================
+// Update Operations
+// =============================================================================
+
+// Request to update a {{ENTITY_NAME}}.
+message Update{{ENTITY_NAME}}Request {
+  // Tenant context (required).
+  core.v1.TenantContext tenant_context = 1 [(validate.rules).message.required = true];
+
+  // ID of the {{ENTITY_NAME_LOWER}} to update.
+  string id = 2 [(validate.rules).string.min_len = 1];
+
+  // Updated name (optional).
+  string name = 3 [(validate.rules).string.max_len = 255];
+
+  // Updated description (optional).
+  string description = 4 [(validate.rules).string.max_len = 1000];
+
+  // Updated status (optional).
+  {{ENTITY_NAME}}Status status = 5;
+}
+
+// Response after updating a {{ENTITY_NAME}}.
+message Update{{ENTITY_NAME}}Response {
+  // The updated {{ENTITY_NAME_LOWER}}.
+  {{ENTITY_NAME}} {{ENTITY_NAME_LOWER}} = 1;
+
+  // Request context for tracing.
+  core.v1.RequestContext context = 2;
+}
+
+// =============================================================================
+// Delete Operations
+// =============================================================================
+
+// Request to delete a {{ENTITY_NAME}}.
+message Delete{{ENTITY_NAME}}Request {
+  // Tenant context (required).
+  core.v1.TenantContext tenant_context = 1 [(validate.rules).message.required = true];
+
+  // ID of the {{ENTITY_NAME_LOWER}} to delete.
+  string id = 2 [(validate.rules).string.min_len = 1];
+}
+
+// =============================================================================
+// Health Check
+// =============================================================================
+
+// Health check response.
+message HealthCheckResponse {
+  // Service status.
+  HealthStatus status = 1;
+
+  // Service version.
+  string version = 2;
+
+  // Additional metadata.
+  map<string, string> metadata = 3;
+}
+
+// Health status enumeration.
+enum HealthStatus {
+  HEALTH_STATUS_UNSPECIFIED = 0;
+  HEALTH_STATUS_HEALTHY = 1;
+  HEALTH_STATUS_DEGRADED = 2;
+  HEALTH_STATUS_UNHEALTHY = 3;
+}

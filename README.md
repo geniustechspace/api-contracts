@@ -328,6 +328,31 @@ client.signIn({
 
 ### Adding a New Service
 
+#### Quick Start (Interactive)
+
+Use the interactive service generator for fast setup:
+
+```bash
+make add-service
+```
+
+This will prompt you for:
+- Service name (e.g., `user-management`, `billing`)
+- Service description
+- API version (default: `v1`)
+- Main entity name
+
+The tool automatically:
+- Creates directory structure (`proto/<service-name>/v1/`)
+- Generates proto files from templates
+- Sets up README documentation
+- Includes multitenancy, validation, and error handling
+- Integrates with existing build scripts
+
+#### Manual Setup
+
+Alternatively, create services manually:
+
 1. **Create proto directory:**
    ```bash
    mkdir -p proto/services/myservice/v1
@@ -382,6 +407,8 @@ client.signIn({
    make build
    make test
    ```
+
+> **💡 Tip:** For a complete service template with validation, multitenancy, and CRUD operations, use `make add-service` instead. See [templates/README.md](templates/README.md) for details.
 
 ### Code Quality
 
