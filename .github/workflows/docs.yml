@@ -19,7 +19,7 @@ jobs:
       - name: Setup Buf
         uses: bufbuild/buf-setup-action@v1
         with:
-          version: "1.28.1"
+          version: "1.47.2"
 
       - name: Generate Proto Documentation
         run: |
