@@ -22,7 +22,7 @@
     "url": "https://github.com/geniustechspace/api-contracts.git"
   },
   "author": "GeniusTechSpace <dev@geniustechspace.com>",
-  "license": "MIT",
+  "license": "BSD-3-Clause",
   "devDependencies": {
     "@types/node": "^22.10.1",
     "@typescript-eslint/eslint-plugin": "^8.17.0",
