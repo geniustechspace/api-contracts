@@ -12,7 +12,7 @@ echo -e "${BLUE}=== Generating TypeScript Clients ===${NC}\n"
 # Get script directory
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 ROOT_DIR="$(dirname "$SCRIPT_DIR")"
-TS_DIR="$ROOT_DIR/ts"
+TS_DIR="$ROOT_DIR/clients/typescript"
 
 cd "$ROOT_DIR"
 
@@ -36,12 +36,9 @@ else
     exit 1
 fi
 
-# Create proto output directory if it doesn't exist
-mkdir -p "$TS_DIR/proto"
-
-# Generate TypeScript code using buf
+# Generate TypeScript code using buf (buf.gen.yaml has output paths)
 echo -e "${BLUE}Generating TypeScript proto code...${NC}"
-buf generate --template buf.gen.yaml --path proto
+buf generate
 
 # Install dependencies
 echo -e "\n${BLUE}Installing TypeScript dependencies...${NC}"
@@ -50,22 +47,6 @@ cd "$TS_DIR"
 if [ ! -d "node_modules" ]; then
     $PKG_MANAGER install
 fi
-
-# Copy generated files to each package
-echo -e "\n${BLUE}Distributing generated code to packages...${NC}"
-for package_dir in packages/*/; do
-    if [ -d "$package_dir" ]; then
-        package_name=$(basename "$package_dir")
-        echo -e "${BLUE}Updating $package_name...${NC}"
-
-        mkdir -p "$package_dir/src/generated"
-
-        # Copy relevant generated files
-        if [ -d "$TS_DIR/proto" ]; then
-            cp -r "$TS_DIR/proto/"* "$package_dir/src/generated/" 2>/dev/null || true
-        fi
-    fi
-done
 
 # Build all packages
 echo -e "\n${BLUE}Building TypeScript packages...${NC}"

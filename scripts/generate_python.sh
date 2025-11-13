@@ -12,7 +12,7 @@ echo -e "${BLUE}=== Generating Python Clients ===${NC}\n"
 # Get script directory
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 ROOT_DIR="$(dirname "$SCRIPT_DIR")"
-PYTHON_DIR="$ROOT_DIR/python"
+PYTHON_DIR="$ROOT_DIR/clients/python"
 
 cd "$ROOT_DIR"
 
@@ -24,56 +24,26 @@ fi
 
 echo -e "${GREEN}✓ python3 found${NC}"
 
-# Check for grpcio-tools
-if ! python3 -c "import grpc_tools" &> /dev/null; then
-    echo -e "${BLUE}Installing grpcio-tools...${NC}"
-    python3 -m pip install grpcio-tools
-fi
-
-# Create proto output directory if it doesn't exist
-mkdir -p "$PYTHON_DIR/proto"
-
-# Generate Python code using buf
+# Generate Python code using buf with dependencies
+# Generates validate protos (needed by generated code) + protovalidate runtime (pip installed)
 echo -e "${BLUE}Generating Python proto code...${NC}"
-buf generate --template buf.gen.yaml --path proto
+buf generate --include-imports
 
-# Function to build a Python package
-build_python_package() {
-    local package_dir=$1
-    local package_name=$(basename "$package_dir")
-
-    if [ ! -d "$package_dir" ]; then
-        echo -e "${RED}Package directory not found: $package_dir${NC}"
-        return 1
-    fi
-
-    echo -e "\n${BLUE}Building $package_name...${NC}"
-    cd "$package_dir"
-
-    # Create src directory if it doesn't exist
-    mkdir -p src/${package_name//-/_}
-
-    # Copy generated files to src
-    if [ -d "$PYTHON_DIR/proto" ]; then
-        cp -r "$PYTHON_DIR/proto/"* "src/${package_name//-/_}/" 2>/dev/null || true
-    fi
-
-    # Create __init__.py if it doesn't exist
-    touch "src/${package_name//-/_}/__init__.py"
-
-    # Install in development mode
-    if [ -f "pyproject.toml" ]; then
-        python3 -m pip install -e . || echo -e "${RED}Warning: Failed to install $package_name${NC}"
-    fi
-
-    cd "$PYTHON_DIR"
-}
+# The generated validate module is kept as-is (needed for imports in generated code)
+# Runtime validation uses protovalidate from PyPI
 
 # Build all Python packages
 cd "$PYTHON_DIR"
 for package in */; do
-    if [ -f "$package/pyproject.toml" ]; then
-        build_python_package "$PYTHON_DIR/$package"
+    if [ -d "$package" ] && [ -f "$package/pyproject.toml" ]; then
+        package_name=$(basename "$package")
+        echo -e "\n${BLUE}Building $package_name...${NC}"
+        cd "$package"
+        
+        # Install in development mode
+        python3 -m pip install -e . --quiet || echo -e "${RED}Warning: Failed to install $package_name${NC}"
+        
+        cd "$PYTHON_DIR"
     fi
 done
 

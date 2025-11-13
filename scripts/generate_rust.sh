@@ -12,7 +12,7 @@ echo -e "${BLUE}=== Generating Rust Clients ===${NC}\n"
 # Get script directory
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 ROOT_DIR="$(dirname "$SCRIPT_DIR")"
-RUST_DIR="$ROOT_DIR/rust"
+RUST_DIR="$ROOT_DIR/clients/rust"
 
 cd "$ROOT_DIR"
 
@@ -24,12 +24,9 @@ fi
 
 echo -e "${GREEN}✓ cargo found${NC}"
 
-# Create proto output directory if it doesn't exist
-mkdir -p "$RUST_DIR/proto"
-
-# Generate Rust code using buf
+# Generate Rust code using buf (buf.gen.yaml has output paths)
 echo -e "${BLUE}Generating Rust proto code...${NC}"
-buf generate --template buf.gen.yaml --path proto
+buf generate
 
 # Build all Rust clients
 echo -e "\n${BLUE}Building Rust workspace...${NC}"

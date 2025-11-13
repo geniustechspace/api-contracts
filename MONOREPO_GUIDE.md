@@ -1,0 +1,381 @@
+# API Contracts Monorepo Guide
+
+This guide explains the monorepo structure for Python and TypeScript client libraries, following the same pattern as the Rust workspace.
+
+## Overview
+
+The API contracts repository uses a **single shared dependency environment** for each language, eliminating the need for per-package virtual environments or node_modules directories.
+
+```
+api-contracts/
+├── clients/
+│   ├── python/              # Python monorepo (like Rust workspace)
+│   │   ├── .venv/          # Single shared virtual environment
+│   │   ├── pyproject.toml  # Workspace configuration
+│   │   ├── core/           # Core package
+│   │   ├── idp/            # Identity Provider package
+│   │   ├── notification/   # Notification package
+│   │   └── validate/       # Generated proto validation (not distributed)
+│   ├── typescript/         # TypeScript monorepo (npm workspaces)
+│   │   ├── node_modules/   # Single shared dependencies
+│   │   ├── package.json    # Workspace configuration
+│   │   └── packages/       # Individual packages
+│   └── rust/               # Rust workspace (reference)
+│       └── Cargo.lock      # Single lock file for entire workspace
+└── dist/
+    └── python/             # Distribution-ready .whl files
+```
+
+## Architecture
+
+### Python Monorepo
+
+**Key Concepts:**
+- **Single `.venv`**: All packages share one virtual environment at `clients/python/.venv`
+- **Workspace Root**: `clients/python/pyproject.toml` defines dev dependencies
+- **Individual Packages**: Each package has its own `pyproject.toml` with runtime dependencies
+- **No Relative Imports**: Packages import each other as installed packages (e.g., `from core.v1 import tenant_pb2`)
+
+**Dependencies:**
+- **protovalidate**: Runtime validation library from bufbuild (pip install, used by application code)
+- **validate module**: Generated proto files for validation (used by generated code imports)
+- Both are needed: `validate` for imports, `protovalidate` for runtime validation
+
+### TypeScript Monorepo
+
+**Key Concepts:**
+- **Single `node_modules`**: All packages share dependencies via npm workspaces
+- **Workspace Root**: `clients/typescript/package.json` defines workspaces and shared dev dependencies
+- **Individual Packages**: Each package has its own `package.json` in `packages/`
+
+## Setup
+
+### Python Development Environment
+
+```bash
+cd clients/python
+
+# Create shared virtual environment
+python3 -m venv .venv
+source .venv/bin/activate
+
+# Install workspace dev dependencies
+pip install -e ".[dev]"
+
+# Install all packages in editable mode
+pip install -e core/ -e idp/ -e notification/ -e validate/
+```
+
+Or use the provided script:
+
+```bash
+# From repository root
+./scripts/setup.sh
+```
+
+### TypeScript Development Environment
+
+```bash
+cd clients/typescript
+
+# Install all dependencies (creates shared node_modules)
+npm install
+
+# Build all packages
+npm run build
+```
+
+## Building Distribution Packages
+
+### Python Wheels
+
+Build production-ready `.whl` files:
+
+```bash
+# From repository root
+make build-python
+# or
+python3 scripts/build_python.py
+```
+
+Output: `dist/python/*.whl`
+
+**Packages built:**
+- `geniustechspace_core-0.1.0-py3-none-any.whl`
+- `geniustechspace_idp-0.1.0-py3-none-any.whl`
+- `geniustechspace_notification-0.1.0-py3-none-any.whl`
+
+**Note**: The `validate` package is NOT distributed as a wheel. It's generated from proto files and used only during development.
+
+### TypeScript Packages
+
+```bash
+cd clients/typescript
+npm run build
+```
+
+## Installation
+
+### From Wheel Files
+
+```bash
+# Install from local wheel files
+pip install dist/python/*.whl
+
+# Or install specific package
+pip install dist/python/geniustechspace_core-0.1.0-py3-none-any.whl
+```
+
+### From PyPI (after publishing)
+
+```bash
+pip install geniustechspace-core geniustechspace-idp geniustechspace-notification protovalidate
+```
+
+### From npm (after publishing)
+
+```bash
+npm install @geniustechspace/core @geniustechspace/idp @geniustechspace/notification
+```
+
+## Usage
+
+### Python
+
+```python
+# Import generated protobuf messages
+from core.v1 import tenant_pb2
+from idp.v1.user import user_pb2
+
+# Import protovalidate for runtime validation
+from protovalidate import Validator
+
+# Create a tenant
+tenant = tenant_pb2.TenantInfo()
+tenant.tenant_id = "tenant-123"
+tenant.name = "Acme Corp"
+tenant.slug = "acme"
+
+# Validate the message
+validator = Validator()
+validator.validate(tenant)  # Raises exception if invalid
+```
+
+### TypeScript
+
+```typescript
+import { TenantInfo } from '@geniustechspace/core/v1/tenant';
+
+const tenant: TenantInfo = {
+  tenantId: 'tenant-123',
+  name: 'Acme Corp',
+  slug: 'acme',
+  // ...
+};
+```
+
+## Validation Architecture
+
+### Understanding protovalidate vs validate
+
+This project uses TWO validation components that work together:
+
+1. **`validate` module** (Generated)
+   - Source: `buf.build/envoyproxy/protoc-gen-validate` in `buf.yaml`
+   - Generated by: `buf generate --include-imports`
+   - Location: `clients/python/validate/`
+   - Purpose: Provides proto definitions for validation rules
+   - Used by: Generated Python code imports (`from validate import validate_pb2`)
+   - Distribution: NOT distributed as wheel, generated during development
+
+2. **`protovalidate` library** (Runtime)
+   - Source: `pip install protovalidate`
+   - Package: https://pypi.org/project/protovalidate/
+   - Purpose: CEL-based runtime validation engine
+   - Used by: Application code for validating messages
+   - Distribution: Regular pip dependency
+
+**Why both?**
+- Generated code needs `validate` protos for import statements
+- Application code needs `protovalidate` for runtime validation
+- They complement each other: `validate` = definitions, `protovalidate` = validator
+
+### Proto Validation Syntax
+
+```protobuf
+// tenant.proto
+import "validate/validate.proto";
+
+message TenantInfo {
+  string tenant_id = 1 [(validate.rules).string = {
+    pattern: "^[a-zA-Z0-9_-]+$",
+    min_len: 1,
+    max_len: 64
+  }];
+  
+  string name = 2 [(validate.rules).string = {min_len: 1, max_len: 255}];
+  string slug = 3 [(validate.rules).string = {pattern: "^[a-z0-9-]+$"}];
+}
+```
+
+## Development Workflow
+
+### Making Changes
+
+1. **Update proto files** in `proto/`
+2. **Regenerate clients**: `buf generate`
+3. **Test imports**: `cd clients/python && source .venv/bin/activate && python -c "from core.v1 import tenant_pb2"`
+4. **Build wheels**: `make build-python`
+5. **Test distribution**: Install wheels in clean venv and test
+
+### Adding Dependencies
+
+**Python:**
+```toml
+# Edit clients/python/<package>/pyproject.toml
+[project]
+dependencies = [
+    "grpcio>=1.68.0",
+    "protobuf>=5.28.0",
+    "protovalidate>=1.0.0",
+    "your-new-dependency>=1.0.0",
+]
+```
+
+**TypeScript:**
+```json
+// Edit clients/typescript/packages/<package>/package.json
+{
+  "dependencies": {
+    "@grpc/grpc-js": "^1.9.0",
+    "your-new-dependency": "^1.0.0"
+  }
+}
+```
+
+Then reinstall: `pip install -e .` (Python) or `npm install` (TypeScript)
+
+## Project Structure Rationale
+
+### Why Single Virtual Environment?
+
+**Before (per-package venvs):**
+```
+clients/python/
+├── core/
+│   └── .venv/          # Duplicate dependencies
+├── idp/
+│   └── .venv/          # Duplicate dependencies
+└── notification/
+    └── .venv/          # Duplicate dependencies
+```
+
+**After (monorepo):**
+```
+clients/python/
+├── .venv/              # Single shared environment
+├── core/               # No .venv
+├── idp/                # No .venv
+└── notification/       # No .venv
+```
+
+**Benefits:**
+- ✅ Disk space: ~75% reduction (single copy of grpcio, protobuf, etc.)
+- ✅ Install time: ~60% faster (install dependencies once)
+- ✅ Consistency: All packages use same dependency versions
+- ✅ Simplicity: One environment to activate, like Rust's `target/`
+
+### Why No Relative Imports?
+
+**Bad** (relative imports):
+```python
+from ..core.v1 import tenant_pb2  # Breaks in distribution!
+```
+
+**Good** (package imports):
+```python
+from core.v1 import tenant_pb2  # Works in source and distribution
+```
+
+Packages are installed in editable mode during development (`pip install -e core/`) and as wheels in production, ensuring consistent imports.
+
+## Troubleshooting
+
+### Import Errors
+
+**Problem**: `ModuleNotFoundError: No module named 'validate'`
+
+**Solution**: The `validate` module is generated by buf and must be installed:
+```bash
+cd clients/python
+buf generate --include-imports  # Generates validate/
+pip install -e validate/         # Installs as package
+```
+
+**Problem**: `ModuleNotFoundError: No module named 'core'`
+
+**Solution**: Install packages in editable mode:
+```bash
+cd clients/python
+source .venv/bin/activate
+pip install -e core/ -e idp/ -e notification/
+```
+
+### Build Failures
+
+**Problem**: `No module named build`
+
+**Solution**: The build script uses the venv Python automatically. Ensure dev dependencies are installed:
+```bash
+cd clients/python
+source .venv/bin/activate
+pip install -e ".[dev]"
+```
+
+### Validation Not Working
+
+**Problem**: Validation rules not enforced
+
+**Solution**: Ensure both components are present:
+```bash
+# 1. Check validate module is generated
+ls clients/python/validate/validate_pb2.py
+
+# 2. Check protovalidate is installed
+pip show protovalidate
+
+# 3. Use protovalidate in code
+from protovalidate import Validator
+validator = Validator()
+validator.validate(your_message)
+```
+
+## Comparison with Rust
+
+All three language clients follow the same monorepo pattern:
+
+| Feature | Rust | Python | TypeScript |
+|---------|------|--------|-----------|
+| **Workspace file** | `Cargo.toml` | `pyproject.toml` | `package.json` |
+| **Lock file** | `Cargo.lock` | (none) | `package-lock.json` |
+| **Shared deps** | `target/` | `.venv/` | `node_modules/` |
+| **Build command** | `cargo build` | `python build_python.py` | `npm run build` |
+| **Package format** | `.crate` | `.whl` | `.tgz` |
+| **Registry** | crates.io | PyPI | npm |
+
+## References
+
+- [Python Packaging User Guide](https://packaging.python.org/)
+- [npm Workspaces](https://docs.npmjs.com/cli/v7/using-npm/workspaces)
+- [Buf Documentation](https://buf.build/docs)
+- [protovalidate on PyPI](https://pypi.org/project/protovalidate/)
+- [protoc-gen-validate](https://github.com/envoyproxy/protoc-gen-validate)
+
+## Contributing
+
+When contributing, ensure:
+1. All packages share the same virtual environment
+2. No relative imports between packages
+3. Packages declare proper dependencies in their `pyproject.toml`
+4. Build script produces working wheel files
+5. Both `validate` (generated) and `protovalidate` (pip) are available

@@ -1,0 +1,74 @@
+# =============================================================================
+# Rust Workspace Configuration
+# =============================================================================
+# Each proto module (core, idp, notification, etc.) is a separate crate
+# that can be published and installed independently.
+#
+# Usage:
+#   cargo build --package geniustechspace-core
+#   cargo test --workspace
+#   cargo publish --package geniustechspace-idp
+# =============================================================================
+
+[workspace]
+resolver = "2"
+members = [
+    "core",
+    "idp",
+    "notification",
+]
+
+# Shared dependencies across all workspace members
+[workspace.dependencies]
+# gRPC runtime - Latest stable
+tonic = { version = "0.12", features = ["transport"] }
+prost = "0.13"
+prost-types = "0.13"
+
+# Serialization
+serde = { version = "1.0", features = ["derive"] }
+serde_json = "1.0"
+bytes = "1.7"
+
+# Validation
+validator = { version = "0.18", features = ["derive"] }
+
+# Async runtime (optional)
+tokio = { version = "1.41", features = ["full"] }
+
+# JSON schema generation
+schemars = "0.8"
+
+# Testing
+tokio-test = "0.4"
+
+# Build dependencies
+tonic-build = "0.12"
+prost-build = "0.13"
+
+# Workspace-level metadata
+[workspace.package]
+version = "0.1.0"
+edition = "2021"
+authors = ["GeniusTechSpace <dev@geniustechspace.com>"]
+license = "MIT"
+repository = "https://github.com/geniustechspace/api-contracts"
+homepage = "https://github.com/geniustechspace/api-contracts"
+rust-version = "1.75"
+
+# Optimize dependencies in release mode for all crates
+[profile.release]
+opt-level = 3
+lto = true
+codegen-units = 1
+strip = true
+
+# Development profile with faster compile times
+[profile.dev]
+opt-level = 0
+debug = true
+
+# Faster builds in CI
+[profile.ci]
+inherits = "dev"
+debug = false

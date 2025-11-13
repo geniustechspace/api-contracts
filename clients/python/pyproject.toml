@@ -1,0 +1,35 @@
+# Python Workspace - Monorepo Configuration
+
+[build-system]
+requires = ["setuptools>=68.0", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "geniustechspace-workspace"
+version = "0.1.0"
+description = "GeniusTechSpace API Contracts Python Workspace"
+readme = "README.md"
+requires-python = ">=3.9"
+
+dependencies = []
+
+[project.optional-dependencies]
+dev = [
+    "pytest>=8.3.0",
+    "black>=24.10.0",
+    "isort>=5.13.0",
+    "mypy>=1.13.0",
+    "build>=1.0.0",  # For building wheel packages
+]
+
+[tool.setuptools]
+packages = []
+
+[tool.black]
+line-length = 100
+
+[tool.isort]
+profile = "black"
+
+[tool.mypy]
+python_version = "3.9"

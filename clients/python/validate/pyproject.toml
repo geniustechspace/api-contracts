@@ -1,0 +1,23 @@
+[build-system]
+requires = ["setuptools>=68.0", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "geniustechspace-validate"
+version = "0.1.0"
+description = "Protocol Buffer validation (protoc-gen-validate) for GeniusTechSpace API"
+readme = "README.md"
+requires-python = ">=3.9"
+
+authors = [
+    {name = "GeniusTechSpace", email = "dev@geniustechspace.com"}
+]
+
+# Runtime dependencies
+dependencies = [
+    "grpcio>=1.68.0",
+    "protobuf>=5.28.0",
+]
+
+[tool.setuptools]
+packages = ["validate"]

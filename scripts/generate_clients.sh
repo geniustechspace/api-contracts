@@ -29,6 +29,13 @@ echo -e "${GREEN}✓ buf found${NC}\n"
 echo -e "${BLUE}Generating code with buf...${NC}"
 buf generate
 
+# Clean up Python validate directory (we use protovalidate from PyPI)
+PYTHON_DIR="$ROOT_DIR/clients/python"
+if [ -d "$PYTHON_DIR/validate" ]; then
+    echo -e "${BLUE}Cleaning up Python validate directory (using protovalidate from PyPI)...${NC}"
+    rm -rf "$PYTHON_DIR/validate"
+fi
+
 echo -e "\n${BLUE}Running language-specific scripts...${NC}\n"
 
 # Run Rust generation

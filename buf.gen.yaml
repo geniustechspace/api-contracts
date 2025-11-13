@@ -1,54 +1,130 @@
-version: v1
+version: v2
+
+# =============================================================================
+# Code Generation Configuration - Enterprise API Contracts
+# =============================================================================
+# This configuration generates clients for multiple languages from proto files.
+# 
+# Supported Languages (in priority order):
+# 1. Rust      - Primary language for high-performance services
+# 2. Go        - Backend microservices and infrastructure
+# 3. Python    - ML/Data services, scripting, and DevOps tools
+# 4. TypeScript - Web clients, Node.js services, and dev tools
+# 5. Java      - Enterprise integration and legacy system support
+#
+# Generated Output Structure:
+# - clients/rust/         → Rust crates (Tonic + Prost)
+# - clients/go/           → Go packages
+# - clients/python/       → Python packages
+# - clients/typescript/   → TypeScript/JavaScript packages  
+# - clients/java/         → Java packages
+# - docs/api/             → Generated documentation
+# =============================================================================
+
+# =============================================================================
+# Managed Mode Configuration
+# =============================================================================
+# Automatically manages package names and options across all generated code
 managed:
   enabled: true
-  go_package_prefix:
-    default: github.com/geniustechspace/api-contracts/gen/go
-  java_package_prefix:
-    default: com.geniustechspace.api
+  override:
+    # Go package prefix
+    - file_option: go_package_prefix
+      value: github.com/geniustechspace/api-contracts/gen/go
+    
+    # Java package prefix
+    - file_option: java_package_prefix
+      value: com.geniustechspace.api
+
+# =============================================================================
+# Input Configuration
+# =============================================================================
+inputs:
+  - directory: proto
+
+# =============================================================================
+# Plugin Configuration
+# =============================================================================
+# Updated to latest stable versions (November 2025)
+# Using remote plugins from buf.build for reliability and version control
+# =============================================================================
 
 plugins:
-  # Rust - Prost for message types
-  - name: prost
-    out: rust/proto
+  # ===========================================================================
+  # RUST - PRIMARY LANGUAGE (High-Performance Services)
+  # ===========================================================================
+  # Note: Rust uses a workspace structure. Generated code will be organized
+  # by proto module path: proto/core/v1 → clients/rust/core/proto/
+  
+  # Rust: Prost v0.4.0 - Message serialization/deserialization
+  # Latest stable plugin version for Prost 0.13.x and Tonic 0.12.x
+  - remote: buf.build/community/neoeinstein-prost:v0.4.0
+    out: clients/rust
     opt:
-      - bytes=bytes
-      - type_attribute=.=::serde::Serialize,::serde::Deserialize
-      - field_attribute=.=::serde::rename_all="camelCase"
-
-  # Rust - Tonic for gRPC services
-  - name: tonic
-    out: rust/proto
+      # Use bytes::Bytes for better performance
+      - bytes=.
+  
+  # Rust: Tonic v0.4.0 - gRPC client and server code generation
+  # Latest stable plugin version for Tonic 0.12.x
+  - remote: buf.build/community/neoeinstein-tonic:v0.4.0
+    out: clients/rust
+  
+  # ===========================================================================
+  # GO - BACKEND SERVICES
+  # ===========================================================================
+  # Note: Go uses separate modules. proto/core/v1 → clients/go/core/v1/
+  
+  # Go: Protocol Buffer messages (protoc-gen-go v1.35.2 - November 2024)
+  # Compatible with google.golang.org/protobuf v1.35.2
+  - remote: buf.build/protocolbuffers/go:v1.35.2
+    out: clients/go
     opt:
-      - build_client=true
-      - build_server=false
-      - compile_well_known_types=true
-
-  # Python - Basic protobuf
-  - name: python
-    out: python/proto
+      - paths=source_relative
+  
+  # Go: gRPC service definitions (protoc-gen-go-grpc v1.5.1 - September 2024)
+  # Compatible with google.golang.org/grpc v1.68.x
+  - remote: buf.build/grpc/go:v1.5.1
+    out: clients/go
     opt:
-      - pyi_out=python/proto
-
-  # Python - gRPC services
-  - name: pyi
-    out: python/proto
-
-  - name: grpc_python
-    out: python/proto
-
-  # TypeScript - ts-proto (modern alternative)
-  - name: ts_proto
-    out: ts/proto
+      - paths=source_relative
+      - require_unimplemented_servers=false
+  
+  # ===========================================================================
+  # PYTHON - ML/DATA SERVICES & SCRIPTS
+  # ===========================================================================
+  # Note: Python uses separate packages. proto/core/v1 → clients/python/core/
+  
+  # Python: Protocol Buffer messages (protoc-gen-python v28.3 - November 2024)
+  # Compatible with protobuf>=5.28.0
+  - remote: buf.build/protocolbuffers/python:v28.3
+    out: clients/python
+  
+  # Python: gRPC service stubs (grpcio v1.68.1 - November 2024)
+  # Compatible with grpcio>=1.68.0
+  - remote: buf.build/grpc/python:v1.68.1
+    out: clients/python
+  
+  # ===========================================================================
+  # TYPESCRIPT - WEB & NODE.JS
+  # ===========================================================================
+  # Note: TypeScript uses npm workspaces. proto/core/v1 → clients/typescript/packages/core/
+  
+  # TypeScript: protobuf-ts v2.9.4 - Modern TypeScript support (October 2024)
+  # Latest stable version with full TypeScript 5.x support
+  - remote: buf.build/community/timostamm-protobuf-ts:v2.9.4
+    out: clients/typescript/packages
     opt:
-      - esModuleInterop=true
-      - outputJsonMethods=true
-      - outputClientImpl=grpc-web
-      - useOptionals=messages
-      - exportCommonSymbols=false
-      - env=browser
-
-  # Documentation
-  - name: doc
-    out: docs
-    opt:
-      - markdown,docs.md
+      # Use string for 64-bit integers (JavaScript compatibility)
+      - long_type_string
+  
+  # ===========================================================================
+  # JAVA - ENTERPRISE INTEGRATION
+  # ===========================================================================
+  
+  # Java: Protocol Buffer messages (protoc-gen-java v28.3 - November 2024)
+  - remote: buf.build/protocolbuffers/java:v28.3
+    out: clients/java
+  
+  # Java: gRPC service stubs (grpc-java v1.68.1 - November 2024)
+  - remote: buf.build/grpc/java:v1.68.1
+    out: clients/java

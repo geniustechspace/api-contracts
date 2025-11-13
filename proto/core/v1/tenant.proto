@@ -1,0 +1,372 @@
+// =============================================================================
+// Tenant Management - Core Multitenancy Primitives
+// =============================================================================
+// This file defines the foundational types for enterprise multitenancy support.
+//
+// Key Concepts:
+// - Tenant: Top-level isolation boundary (e.g., entire company/organization)
+// - Organization: Sub-division within a tenant (e.g., department, business unit)
+// - Workspace: Collaboration space within an organization (e.g., project, team)
+//
+// Security Model:
+// - Every request MUST include tenant context via gRPC metadata or HTTP headers
+// - Data is isolated at tenant/organization/workspace boundaries
+// - Access control enforced at each level
+//
+// Headers:
+//   x-tenant-id: Required - Primary tenant identifier (UUID or custom format)
+//   x-organization-id: Optional - Organization within tenant
+//   x-workspace-id: Optional - Workspace within organization
+//   x-environment: Optional - Environment (production/staging/development)
+//
+// Compliance:
+// - Supports GDPR, HIPAA, SOC 2, PCI DSS requirements
+// - Data residency controls per tenant
+// - Audit logging configuration per tenant
+// - Configurable data retention policies
+// =============================================================================
+
+syntax = "proto3";
+
+package core.v1;
+
+import "google/protobuf/timestamp.proto";
+import "validate/validate.proto";
+
+// Go: Backend services package
+option go_package = "github.com/geniustechspace/api-contracts/gen/go/core/v1;corev1";
+
+// Java: Enterprise integration package
+option java_package = "com.geniustechspace.api.core.v1";
+option java_multiple_files = true;
+option java_outer_classname = "TenantProto";
+
+// =============================================================================
+// Tenant Context - Required for ALL Requests
+// =============================================================================
+
+// TenantContext provides the isolation context for every request in the system.
+// This MUST be included in all service requests via gRPC metadata or HTTP headers.
+//
+// Usage:
+// - gRPC: Set in metadata with keys: x-tenant-id, x-organization-id, x-workspace-id
+// - HTTP: Set in headers with same keys
+// - All services MUST validate tenant context before processing requests
+// - Services MUST enforce data isolation based on this context
+message TenantContext {
+  // Tenant identifier (REQUIRED for all requests).
+  // Format: UUID v4 recommended, or custom tenant ID format.
+  // Example: "550e8400-e29b-41d4-a716-446655440000"
+  string tenant_id = 1 [(validate.rules).string = {
+    min_len: 1,
+    max_len: 64,
+    pattern: "^[a-zA-Z0-9_-]+$"
+  }];
+
+  // Organization identifier within the tenant (OPTIONAL).
+  // Provides sub-tenant isolation for large enterprises.
+  // Example: "eng-dept" or "sales-team"
+  string organization_id = 2 [(validate.rules).string.max_len = 64];
+
+  // Workspace identifier within the organization (OPTIONAL).
+  // Provides project/team-level isolation.
+  // Example: "project-alpha" or "q4-planning"
+  string workspace_id = 3 [(validate.rules).string.max_len = 64];
+
+  // Environment designation for the request.
+  // Used for routing, feature flags, and compliance rules.
+  Environment environment = 4;
+
+  // Additional tenant-specific metadata for routing and policy decisions.
+  // Can include feature flags, A/B test groups, etc.
+  map<string, string> metadata = 5;
+}
+
+// =============================================================================
+// Environment Types
+// =============================================================================
+
+// Environment designates the operational environment for tenant isolation.
+// Different environments may have different:
+// - Security policies
+// - Data retention rules
+// - Feature availability
+// - Performance SLAs
+enum Environment {
+  // Default/unspecified environment (should not be used in production).
+  ENVIRONMENT_UNSPECIFIED = 0;
+
+  // Production environment - highest security and compliance requirements.
+  ENVIRONMENT_PRODUCTION = 1;
+
+  // Staging environment - pre-production testing.
+  ENVIRONMENT_STAGING = 2;
+
+  // Development environment - for active development work.
+  ENVIRONMENT_DEVELOPMENT = 3;
+
+  // Test environment - for automated testing.
+  ENVIRONMENT_TEST = 4;
+}
+
+// =============================================================================
+// Tenant Information
+// =============================================================================
+
+// TenantInfo provides comprehensive configuration and metadata for a tenant.
+// This is returned by tenant management services and used for:
+// - Feature gating based on subscription tier
+// - Enforcing resource limits
+// - Compliance requirements
+// - Audit configuration
+message TenantInfo {
+  // Unique tenant identifier (immutable).
+  string tenant_id = 1 [(validate.rules).string.min_len = 1];
+
+  // Human-readable display name.
+  string name = 2 [(validate.rules).string = {
+    min_len: 1,
+    max_len: 255
+  }];
+
+  // Current operational status of the tenant.
+  TenantStatus status = 3;
+
+  // Subscription tier - determines available features and limits.
+  SubscriptionTier tier = 4;
+
+  // Feature flags enabled for this tenant.
+  // Used for gradual feature rollout and A/B testing.
+  repeated string feature_flags = 5;
+
+  // Resource usage limits for this tenant.
+  ResourceLimits limits = 6;
+
+  // Compliance requirements and settings.
+  ComplianceSettings compliance = 7;
+
+  // Audit logging configuration.
+  AuditSettings audit = 8;
+
+  // Timestamp when tenant was created.
+  google.protobuf.Timestamp created_at = 20;
+
+  // Timestamp when tenant was last updated.
+  google.protobuf.Timestamp updated_at = 21;
+
+  // Timestamp when tenant was deleted (soft delete).
+  google.protobuf.Timestamp deleted_at = 22;
+}
+
+// =============================================================================
+// Tenant Status
+// =============================================================================
+
+// TenantStatus represents the operational state of a tenant.
+// Status transitions are controlled and audited.
+enum TenantStatus {
+  // Default/unspecified status (invalid).
+  TENANT_STATUS_UNSPECIFIED = 0;
+
+  // Active - tenant is operational and can make requests.
+  TENANT_STATUS_ACTIVE = 1;
+
+  // Suspended - tenant access is temporarily disabled (billing issue, policy violation).
+  TENANT_STATUS_SUSPENDED = 2;
+
+  // Deleted - tenant is marked for deletion (soft delete, recoverable).
+  TENANT_STATUS_DELETED = 3;
+
+  // Trial - tenant is in trial period with limited features/duration.
+  TENANT_STATUS_TRIAL = 4;
+
+  // Archived - tenant is permanently archived (hard delete pending).
+  TENANT_STATUS_ARCHIVED = 5;
+}
+
+// =============================================================================
+// Subscription Tier
+// =============================================================================
+
+// SubscriptionTier determines feature availability and resource limits.
+// Higher tiers unlock more features and higher limits.
+enum SubscriptionTier {
+  // Default/unspecified tier (should not be used).
+  SUBSCRIPTION_TIER_UNSPECIFIED = 0;
+
+  // Free tier - basic features, limited resources.
+  SUBSCRIPTION_TIER_FREE = 1;
+
+  // Basic tier - essential features for small teams.
+  SUBSCRIPTION_TIER_BASIC = 2;
+
+  // Professional tier - advanced features for growing teams.
+  SUBSCRIPTION_TIER_PROFESSIONAL = 3;
+
+  // Enterprise tier - full feature set with premium support.
+  SUBSCRIPTION_TIER_ENTERPRISE = 4;
+
+  // Custom tier - bespoke configuration for large organizations.
+  SUBSCRIPTION_TIER_CUSTOM = 5;
+}
+
+// =============================================================================
+// Resource Limits
+// =============================================================================
+
+// ResourceLimits defines hard limits on tenant resource consumption.
+// These limits are enforced at runtime to prevent abuse and ensure fair use.
+message ResourceLimits {
+  // Maximum number of users in the tenant.
+  int32 max_users = 1 [(validate.rules).int32.gte = 0];
+
+  // Maximum API calls per minute (rate limiting).
+  int32 max_api_calls_per_minute = 2 [(validate.rules).int32.gte = 0];
+
+  // Maximum storage in bytes.
+  int64 max_storage_bytes = 3 [(validate.rules).int64.gte = 0];
+
+  // Maximum concurrent active sessions.
+  int32 max_concurrent_sessions = 4 [(validate.rules).int32.gte = 0];
+
+  // Maximum number of organizations within the tenant.
+  int32 max_organizations = 5 [(validate.rules).int32.gte = 0];
+
+  // Maximum number of workspaces per organization.
+  int32 max_workspaces_per_org = 6 [(validate.rules).int32.gte = 0];
+
+  // Custom resource limits (extensible for future requirements).
+  // Key examples: "max_projects", "max_api_keys", "max_webhooks"
+  map<string, int64> custom_limits = 10;
+}
+
+// =============================================================================
+// Compliance Settings
+// =============================================================================
+
+// ComplianceSettings defines regulatory and compliance requirements per tenant.
+// Different tenants may have different compliance requirements based on:
+// - Industry (healthcare, finance, etc.)
+// - Geography (GDPR in EU, etc.)
+// - Customer contracts
+message ComplianceSettings {
+  // GDPR (General Data Protection Regulation) compliance enabled.
+  // Required for tenants with users in the European Union.
+  bool gdpr_enabled = 1;
+
+  // HIPAA (Health Insurance Portability and Accountability Act) compliance enabled.
+  // Required for healthcare-related tenants in the United States.
+  bool hipaa_enabled = 2;
+
+  // SOC 2 compliance enabled.
+  // Required for enterprise customers with security audit requirements.
+  bool soc2_enabled = 3;
+
+  // PCI DSS compliance enabled.
+  // Required for tenants handling payment card information.
+  bool pci_dss_enabled = 4;
+
+  // Data residency requirements.
+  DataResidency data_residency = 5;
+
+  // Data retention policy in days.
+  // After this period, data may be automatically deleted based on policy.
+  int32 data_retention_days = 6 [(validate.rules).int32 = {
+    gte: 0,
+    lte: 3650  // Max 10 years
+  }];
+
+  // Require encryption at rest for all tenant data.
+  bool encryption_at_rest_required = 7;
+
+  // Require encryption in transit (TLS) for all API calls.
+  bool encryption_in_transit_required = 8;
+}
+
+// =============================================================================
+// Data Residency
+// =============================================================================
+
+// DataResidency defines geographic restrictions on data storage.
+// Critical for compliance with regional data protection laws.
+message DataResidency {
+  // Allowed regions for data storage (ISO 3166-1 alpha-2 country codes).
+  // Example: ["US", "CA", "GB"]
+  // Empty list means no restrictions.
+  repeated string allowed_regions = 1;
+
+  // Prohibited regions where data must not be stored.
+  // Takes precedence over allowed_regions.
+  // Example: ["CN", "RU"]
+  repeated string prohibited_regions = 2;
+
+  // Primary region for data storage (preferred location).
+  // Example: "US" or "EU"
+  string primary_region = 3 [(validate.rules).string.max_len = 10];
+}
+
+// =============================================================================
+// Audit Settings
+// =============================================================================
+
+// AuditSettings configures audit logging behavior per tenant.
+// Audit logs track security-relevant events for compliance and forensics.
+message AuditSettings {
+  // Enable audit logging for this tenant.
+  bool enabled = 1;
+
+  // Audit log retention period in days.
+  // Logs older than this are eligible for archival/deletion.
+  int32 retention_days = 2 [(validate.rules).int32 = {
+    gte: 0,
+    lte: 3650  // Max 10 years
+  }];
+
+  // Types of events to audit.
+  // Fine-grained control over what gets logged.
+  repeated AuditEventType event_types = 3;
+
+  // External audit log destination (optional).
+  // URL or identifier for SIEM integration.
+  // Example: "splunk://logs.example.com" or "s3://audit-bucket/tenant-123"
+  string external_destination = 4 [(validate.rules).string.max_len = 512];
+
+  // Include PII (Personally Identifiable Information) in audit logs.
+  // Should be false unless specifically required for compliance.
+  bool include_pii = 5;
+}
+
+// =============================================================================
+// Audit Event Types
+// =============================================================================
+
+// AuditEventType categorizes security-relevant events for audit logging.
+// Each type can be individually enabled/disabled per tenant.
+enum AuditEventType {
+  // Default/unspecified event type.
+  AUDIT_EVENT_TYPE_UNSPECIFIED = 0;
+
+  // Authentication events (login, logout, MFA, etc.).
+  AUDIT_EVENT_TYPE_AUTHENTICATION = 1;
+
+  // Authorization events (permission checks, access denied, etc.).
+  AUDIT_EVENT_TYPE_AUTHORIZATION = 2;
+
+  // Data access events (read operations on sensitive data).
+  AUDIT_EVENT_TYPE_DATA_ACCESS = 3;
+
+  // Data modification events (create, update, delete).
+  AUDIT_EVENT_TYPE_DATA_MODIFICATION = 4;
+
+  // Configuration changes (tenant settings, user roles, etc.).
+  AUDIT_EVENT_TYPE_CONFIGURATION_CHANGE = 5;
+
+  // Security events (password changes, key rotation, etc.).
+  AUDIT_EVENT_TYPE_SECURITY_EVENT = 6;
+
+  // Compliance events (data export, deletion requests, etc.).
+  AUDIT_EVENT_TYPE_COMPLIANCE_EVENT = 7;
+
+  // Administrative actions (user management, tenant configuration).
+  AUDIT_EVENT_TYPE_ADMINISTRATIVE = 8;
+}

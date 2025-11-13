@@ -1,0 +1,61 @@
+[build-system]
+requires = ["setuptools>=68.0", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "geniustechspace-core"
+version = "0.1.0"
+description = "Core API contracts for GeniusTechSpace - Tenant management, multitenancy, and common types"
+readme = "README.md"
+authors = [
+    {name = "GeniusTechSpace", email = "dev@geniustechspace.com"}
+]
+license = {text = "MIT"}
+classifiers = [
+    "Development Status :: 4 - Beta",
+    "Intended Audience :: Developers",
+    "License :: OSI Approved :: MIT License",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.9",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Programming Language :: Python :: 3.13",
+]
+requires-python = ">=3.9"
+dependencies = [
+    "grpcio>=1.68.0",
+    "protobuf>=5.28.0",
+    "pydantic>=2.10.0",
+    # Note: protovalidate runtime library requires buf.validate module (from bufbuild/protovalidate)
+    # but we use protoc-gen-validate (envoyproxy) which generates old 'validate' module.
+    # These are incompatible. Validation is defined in proto files; no runtime validator needed yet.
+]
+
+[project.optional-dependencies]
+dev = [
+    "pytest>=8.3.0",
+    "pytest-asyncio>=0.24.0",
+    "mypy>=1.13.0",
+    "black>=24.10.0",
+    "isort>=5.13.0",
+    "grpcio-testing>=1.68.0",
+]
+
+[project.urls]
+Homepage = "https://github.com/geniustechspace/api-contracts"
+Repository = "https://github.com/geniustechspace/api-contracts"
+
+[tool.setuptools]
+packages = ["v1"]
+
+[tool.setuptools.package-data]
+"*" = ["*.py", "py.typed"]
+
+[tool.black]
+line-length = 100
+target-version = ['py39']
+
+[tool.isort]
+profile = "black"
+line_length = 100

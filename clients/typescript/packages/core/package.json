@@ -1,0 +1,34 @@
+{
+  "name": "@geniustechspace/core",
+  "version": "0.1.0",
+  "description": "Core API contracts for GeniusTechSpace - Tenant management, multitenancy, and common types",
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "scripts": {
+    "build": "tsc",
+    "test": "jest",
+    "lint": "eslint . --ext .ts",
+    "clean": "rm -rf dist"
+  },
+  "keywords": [
+    "grpc",
+    "protobuf",
+    "api",
+    "multitenancy",
+    "tenant"
+  ],
+  "author": "GeniusTechSpace <dev@geniustechspace.com>",
+  "license": "MIT",
+  "dependencies": {
+    "@grpc/grpc-js": "^1.12.2",
+    "@grpc/proto-loader": "^0.7.13",
+    "protobufjs": "^7.4.0"
+  },
+  "devDependencies": {
+    "typescript": "^5.7.2"
+  },
+  "files": [
+    "dist",
+    "README.md"
+  ]
+}

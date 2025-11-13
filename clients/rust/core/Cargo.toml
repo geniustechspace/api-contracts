@@ -1,0 +1,40 @@
+[package]
+name = "geniustechspace-core"
+version.workspace = true
+edition.workspace = true
+authors.workspace = true
+license.workspace = true
+repository.workspace = true
+homepage.workspace = true
+rust-version.workspace = true
+description = "Core API contracts for GeniusTechSpace - Tenant management, multitenancy, and common types"
+keywords = ["grpc", "protobuf", "api", "multitenancy", "tenant"]
+categories = ["api-bindings", "network-programming"]
+readme = "README.md"
+
+[features]
+default = ["client"]
+client = ["tonic/transport"]
+server = ["tonic/transport"]
+
+[dependencies]
+# Workspace dependencies
+tonic = { workspace = true }
+prost = { workspace = true }
+prost-types = { workspace = true }
+serde = { workspace = true }
+serde_json = { workspace = true }
+bytes = { workspace = true }
+validator = { workspace = true }
+schemars = { workspace = true }
+
+# Optional async runtime
+tokio = { workspace = true, optional = true }
+
+[dev-dependencies]
+tokio = { workspace = true, features = ["full", "test-util"] }
+tokio-test = { workspace = true }
+
+[package.metadata.docs.rs]
+all-features = true
+rustdoc-args = ["--cfg", "docsrs"]

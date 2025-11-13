@@ -1,0 +1,35 @@
+{
+  "name": "@geniustechspace/api-contracts",
+  "version": "0.1.0",
+  "private": true,
+  "description": "TypeScript/JavaScript clients for GeniusTechSpace API contracts",
+  "workspaces": [
+    "packages/validate",
+    "packages/core",
+    "packages/idp",
+    "packages/notification",
+    "packages/google"
+  ],
+  "scripts": {
+    "build": "npm run build --workspaces",
+    "test": "npm run test --workspaces",
+    "lint": "npm run lint --workspaces",
+    "format": "prettier --write \"packages/**/*.ts\"",
+    "clean": "npm run clean --workspaces"
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/geniustechspace/api-contracts.git"
+  },
+  "author": "GeniusTechSpace <dev@geniustechspace.com>",
+  "license": "MIT",
+  "devDependencies": {
+    "@types/node": "^22.10.1",
+    "@typescript-eslint/eslint-plugin": "^8.17.0",
+    "@typescript-eslint/parser": "^8.17.0",
+    "eslint": "^9.15.0",
+    "jest": "^29.7.0",
+    "prettier": "^3.3.3",
+    "typescript": "^5.7.2"
+  }
+}

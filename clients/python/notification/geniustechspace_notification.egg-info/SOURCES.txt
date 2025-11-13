@@ -1,0 +1,7 @@
+pyproject.toml
+geniustechspace_notification.egg-info/PKG-INFO
+geniustechspace_notification.egg-info/SOURCES.txt
+geniustechspace_notification.egg-info/dependency_links.txt
+geniustechspace_notification.egg-info/requires.txt
+geniustechspace_notification.egg-info/top_level.txt
+v1/__init__.py
