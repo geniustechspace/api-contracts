@@ -219,28 +219,24 @@ jobs:
           ```bash
           cargo add geniustechspace-core@$VERSION
           cargo add geniustechspace-idp@$VERSION
-          cargo add geniustechspace-notification@$VERSION
           ```
 
           ### Python
           ```bash
           pip install geniustechspace-core==$VERSION
           pip install geniustechspace-idp==$VERSION
-          pip install geniustechspace-notification==$VERSION
           ```
 
           ### TypeScript/JavaScript
           ```bash
           npm install @geniustechspace/core@$VERSION
           npm install @geniustechspace/idp@$VERSION
-          npm install @geniustechspace/notification@$VERSION
           ```
 
           ### Go
           ```bash
           go get github.com/geniustechspace/api-contracts/clients/go/core@$TAG_NAME
           go get github.com/geniustechspace/api-contracts/clients/go/idp@$TAG_NAME
-          go get github.com/geniustechspace/api-contracts/clients/go/notification@$TAG_NAME
           ```
 
           ### Java
@@ -253,11 +249,6 @@ jobs:
           <dependency>
             <groupId>com.geniustechspace</groupId>
             <artifactId>api-contracts-idp</artifactId>
-            <version>$VERSION</version>
-          </dependency>
-          <dependency>
-            <groupId>com.geniustechspace</groupId>
-            <artifactId>api-contracts-notification</artifactId>
             <version>$VERSION</version>
           </dependency>
           ```

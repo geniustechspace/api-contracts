@@ -194,7 +194,6 @@ jobs:
             - Proto Reference:
               - Core: docs/generated/proto/markdown/core.md
               - IDP: docs/generated/proto/markdown/idp.md
-              - Notification: docs/generated/proto/markdown/notification.md
 
           markdown_extensions:
             - pymdownx.highlight:
@@ -240,7 +239,6 @@ jobs:
 
           - [Core Services](proto/markdown/core.md) - Multitenancy, context, errors
           - [IDP Services](proto/markdown/idp.md) - Identity and authentication
-          - [Notification Services](proto/markdown/notification.md) - Messaging and notifications
 
           ## Client Libraries
 

@@ -83,18 +83,18 @@ jobs:
 
           if [ -z "$PREV_TAG" ]; then
             echo "No previous tag found, publishing all packages"
-            echo "rust=core idp notification" >> $GITHUB_OUTPUT
-            echo "python=core idp notification" >> $GITHUB_OUTPUT
-            echo "typescript=core idp notification" >> $GITHUB_OUTPUT
-            echo "go=core idp notification" >> $GITHUB_OUTPUT
-            echo "java=core idp notification" >> $GITHUB_OUTPUT
+            echo "rust=core idp" >> $GITHUB_OUTPUT
+            echo "python=core idp" >> $GITHUB_OUTPUT
+            echo "typescript=core idp" >> $GITHUB_OUTPUT
+            echo "go=core idp" >> $GITHUB_OUTPUT
+            echo "java=core idp" >> $GITHUB_OUTPUT
           else
             echo "Comparing with $PREV_TAG"
 
             # Detect Rust changes
             if git diff --name-only $PREV_TAG HEAD | grep -q '^clients/rust/\|^proto/'; then
               RUST_PKGS=$(git diff --name-only $PREV_TAG HEAD | grep '^clients/rust/' | cut -d/ -f3 | sort -u | tr '\n' ' ')
-              echo "rust=${RUST_PKGS:-core idp notification}" >> $GITHUB_OUTPUT
+              echo "rust=${RUST_PKGS:-core idp}" >> $GITHUB_OUTPUT
             else
               echo "rust=" >> $GITHUB_OUTPUT
             fi
@@ -102,7 +102,7 @@ jobs:
             # Detect Python changes
             if git diff --name-only $PREV_TAG HEAD | grep -q '^clients/python/\|^proto/'; then
               PY_PKGS=$(git diff --name-only $PREV_TAG HEAD | grep '^clients/python/' | cut -d/ -f3 | sort -u | tr '\n' ' ')
-              echo "python=${PY_PKGS:-core idp notification}" >> $GITHUB_OUTPUT
+              echo "python=${PY_PKGS:-core idp}" >> $GITHUB_OUTPUT
             else
               echo "python=" >> $GITHUB_OUTPUT
             fi
@@ -110,7 +110,7 @@ jobs:
             # Detect TypeScript changes
             if git diff --name-only $PREV_TAG HEAD | grep -q '^clients/typescript/\|^proto/'; then
               TS_PKGS=$(git diff --name-only $PREV_TAG HEAD | grep '^clients/typescript/packages/' | cut -d/ -f4 | sort -u | tr '\n' ' ')
-              echo "typescript=${TS_PKGS:-core idp notification}" >> $GITHUB_OUTPUT
+              echo "typescript=${TS_PKGS:-core idp}" >> $GITHUB_OUTPUT
             else
               echo "typescript=" >> $GITHUB_OUTPUT
             fi
@@ -118,7 +118,7 @@ jobs:
             # Detect Go changes
             if git diff --name-only $PREV_TAG HEAD | grep -q '^clients/go/\|^proto/'; then
               GO_MODS=$(git diff --name-only $PREV_TAG HEAD | grep '^clients/go/' | cut -d/ -f3 | sort -u | tr '\n' ' ')
-              echo "go=${GO_MODS:-core idp notification}" >> $GITHUB_OUTPUT
+              echo "go=${GO_MODS:-core idp}" >> $GITHUB_OUTPUT
             else
               echo "go=" >> $GITHUB_OUTPUT
             fi
@@ -126,7 +126,7 @@ jobs:
             # Detect Java changes
             if git diff --name-only $PREV_TAG HEAD | grep -q '^clients/java/\|^proto/'; then
               JAVA_MODS=$(git diff --name-only $PREV_TAG HEAD | grep '^clients/java/' | cut -d/ -f3 | sort -u | tr '\n' ' ')
-              echo "java=${JAVA_MODS:-core idp notification}" >> $GITHUB_OUTPUT
+              echo "java=${JAVA_MODS:-core idp}" >> $GITHUB_OUTPUT
             else
               echo "java=" >> $GITHUB_OUTPUT
             fi
