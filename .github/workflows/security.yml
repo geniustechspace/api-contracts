@@ -1,0 +1,421 @@
+name: Security & Dependency Scanning
+
+on:
+  push:
+    branches: [main, staging, dev]
+  pull_request:
+    branches: [main, staging, dev]
+  schedule:
+    # Run security scans daily at 2 AM UTC
+    - cron: '0 2 * * *'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  security-events: write
+  pull-requests: write
+  issues: write
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  RUST_VERSION: "1.83.0"
+  PYTHON_VERSION: "3.12"
+  GO_VERSION: "1.23"
+  NODE_VERSION: "22"
+
+jobs:
+  # ============================================================================
+  # Dependency Review (PR only)
+  # ============================================================================
+  dependency-review:
+    name: Dependency Review
+    runs-on: ubuntu-latest
+    if: github.event_name == 'pull_request'
+    timeout-minutes: 10
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      - name: Dependency Review
+        uses: actions/dependency-review-action@v4
+        with:
+          fail-on-severity: moderate
+          deny-licenses: GPL-2.0, GPL-3.0, AGPL-3.0
+          comment-summary-in-pr: always
+
+  # ============================================================================
+  # CodeQL Analysis
+  # ============================================================================
+  codeql:
+    name: CodeQL Security Analysis
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    strategy:
+      fail-fast: false
+      matrix:
+        language: [python, javascript, go]
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      - name: Initialize CodeQL
+        uses: github/codeql-action/init@v3
+        with:
+          languages: ${{ matrix.language }}
+          queries: +security-and-quality
+
+      - name: Autobuild
+        uses: github/codeql-action/autobuild@v3
+
+      - name: Perform CodeQL Analysis
+        uses: github/codeql-action/analyze@v3
+        with:
+          category: "/language:${{ matrix.language }}"
+
+  # ============================================================================
+  # Trivy Vulnerability Scanner
+  # ============================================================================
+  trivy-scan:
+    name: Trivy Vulnerability Scan
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      - name: Run Trivy Vulnerability Scanner (Filesystem)
+        uses: aquasecurity/trivy-action@master
+        with:
+          scan-type: 'fs'
+          scan-ref: '.'
+          format: 'sarif'
+          output: 'trivy-fs-results.sarif'
+          severity: 'CRITICAL,HIGH,MEDIUM'
+          exit-code: '0'
+
+      - name: Upload Trivy Results to GitHub Security
+        uses: github/codeql-action/upload-sarif@v3
+        with:
+          sarif_file: 'trivy-fs-results.sarif'
+          category: 'trivy-filesystem'
+
+      - name: Run Trivy Config Scanner
+        uses: aquasecurity/trivy-action@master
+        with:
+          scan-type: 'config'
+          scan-ref: '.'
+          format: 'table'
+          exit-code: '0'
+
+  # ============================================================================
+  # Rust Security Audit
+  # ============================================================================
+  rust-audit:
+    name: Rust Security Audit
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      - name: Setup Rust
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          toolchain: ${{ env.RUST_VERSION }}
+
+      - name: Install cargo-audit
+        run: cargo install cargo-audit
+
+      - name: Run Cargo Audit
+        working-directory: clients/rust
+        run: |
+          cargo audit --json > audit-report.json || true
+          cargo audit || echo "::warning::Rust security vulnerabilities found"
+
+      - name: Upload Audit Report
+        uses: actions/upload-artifact@v4
+        with:
+          name: rust-audit-report
+          path: clients/rust/audit-report.json
+          retention-days: 30
+
+  # ============================================================================
+  # Python Security Audit
+  # ============================================================================
+  python-audit:
+    name: Python Security Audit
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+
+      - name: Install Security Tools
+        run: |
+          pip install safety bandit pip-audit
+
+      - name: Run Safety Check
+        run: |
+          for pkg in clients/python/*/; do
+            if [ -f "$pkg/pyproject.toml" ]; then
+              echo "Checking $pkg..."
+              (cd "$pkg" && safety check --json > safety-report.json || true)
+            fi
+          done
+        continue-on-error: true
+
+      - name: Run Bandit
+        run: |
+          bandit -r clients/python -f json -o bandit-report.json || true
+          bandit -r clients/python || echo "::warning::Python security issues found"
+        continue-on-error: true
+
+      - name: Run pip-audit
+        run: |
+          for pkg in clients/python/*/; do
+            if [ -f "$pkg/pyproject.toml" ]; then
+              echo "Auditing $pkg..."
+              (cd "$pkg" && pip-audit || true)
+            fi
+          done
+        continue-on-error: true
+
+  # ============================================================================
+  # Go Security Scan
+  # ============================================================================
+  go-security:
+    name: Go Security Scan
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      - name: Setup Go
+        uses: actions/setup-go@v5
+        with:
+          go-version: ${{ env.GO_VERSION }}
+
+      - name: Install gosec
+        run: go install github.com/securego/gosec/v2/cmd/gosec@latest
+
+      - name: Run gosec
+        run: |
+          for mod in clients/go/*/; do
+            if [ -f "$mod/go.mod" ]; then
+              echo "Scanning $mod..."
+              (cd "$mod" && gosec -fmt json -out gosec-report.json ./... || true)
+              (cd "$mod" && gosec ./... || echo "::warning::Go security issues found in $mod")
+            fi
+          done
+        continue-on-error: true
+
+      - name: Run Go Vulnerability Check
+        run: |
+          go install golang.org/x/vuln/cmd/govulncheck@latest
+          for mod in clients/go/*/; do
+            if [ -f "$mod/go.mod" ]; then
+              echo "Checking vulnerabilities in $mod..."
+              (cd "$mod" && govulncheck ./... || true)
+            fi
+          done
+        continue-on-error: true
+
+  # ============================================================================
+  # NPM Security Audit
+  # ============================================================================
+  npm-audit:
+    name: NPM Security Audit
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+
+      - name: Run NPM Audit
+        working-directory: clients/typescript
+        run: |
+          npm audit --json > npm-audit-report.json || true
+          npm audit || echo "::warning::NPM security vulnerabilities found"
+        continue-on-error: true
+
+      - name: Upload NPM Audit Report
+        uses: actions/upload-artifact@v4
+        with:
+          name: npm-audit-report
+          path: clients/typescript/npm-audit-report.json
+          retention-days: 30
+
+  # ============================================================================
+  # Secret Scanning
+  # ============================================================================
+  secret-scan:
+    name: Secret Scanning
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: TruffleHog Secret Scan
+        uses: trufflesecurity/trufflehog@main
+        with:
+          path: ./
+          base: ${{ github.event.repository.default_branch }}
+          head: HEAD
+          extra_args: --only-verified --json
+
+  # ============================================================================
+  # License Compliance Check
+  # ============================================================================
+  license-check:
+    name: License Compliance
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      - name: Setup Go for License Checker
+        uses: actions/setup-go@v5
+        with:
+          go-version: ${{ env.GO_VERSION }}
+
+      - name: Install go-licenses
+        run: go install github.com/google/go-licenses@latest
+
+      - name: Check Rust Licenses
+        run: |
+          cargo install cargo-license || true
+          for pkg in clients/rust/*/; do
+            if [ -f "$pkg/Cargo.toml" ]; then
+              echo "Checking licenses in $pkg..."
+              (cd "$pkg" && cargo license --json > licenses.json || true)
+            fi
+          done
+        continue-on-error: true
+
+      - name: Check Go Licenses
+        run: |
+          for mod in clients/go/*/; do
+            if [ -f "$mod/go.mod" ]; then
+              echo "Checking licenses in $mod..."
+              (cd "$mod" && go-licenses report ./... || true)
+            fi
+          done
+        continue-on-error: true
+
+      - name: Setup Node.js for License Check
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+
+      - name: Install license-checker
+        run: npm install -g license-checker
+
+      - name: Check NPM Licenses
+        working-directory: clients/typescript
+        run: |
+          license-checker --json > licenses.json || true
+          license-checker --summary || true
+        continue-on-error: true
+
+  # ============================================================================
+  # SBOM Generation
+  # ============================================================================
+  sbom-generation:
+    name: Generate SBOM
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      - name: Generate SBOM with Syft
+        uses: anchore/sbom-action@v0
+        with:
+          path: .
+          format: cyclonedx-json
+          output-file: sbom.cyclonedx.json
+
+      - name: Upload SBOM
+        uses: actions/upload-artifact@v4
+        with:
+          name: sbom
+          path: sbom.cyclonedx.json
+          retention-days: 90
+
+      - name: Scan SBOM with Grype
+        uses: anchore/scan-action@v3
+        with:
+          sbom: sbom.cyclonedx.json
+          fail-build: false
+          severity-cutoff: high
+
+  # ============================================================================
+  # Security Summary
+  # ============================================================================
+  security-summary:
+    name: Security Summary
+    runs-on: ubuntu-latest
+    needs:
+      - trivy-scan
+      - rust-audit
+      - python-audit
+      - go-security
+      - npm-audit
+      - license-check
+    if: always()
+    timeout-minutes: 10
+    steps:
+      - name: Generate Security Summary
+        run: |
+          cat >> $GITHUB_STEP_SUMMARY << 'EOF'
+          # 🔒 Security Scan Summary
+
+          ## Scan Results
+
+          | Scan Type | Status |
+          |-----------|--------|
+          | Trivy | ${{ needs.trivy-scan.result }} |
+          | Rust Audit | ${{ needs.rust-audit.result }} |
+          | Python Security | ${{ needs.python-audit.result }} |
+          | Go Security | ${{ needs.go-security.result }} |
+          | NPM Audit | ${{ needs.npm-audit.result }} |
+          | License Check | ${{ needs.license-check.result }} |
+
+          ## Recommendations
+
+          - Review all HIGH and CRITICAL vulnerabilities immediately
+          - Update dependencies with known vulnerabilities
+          - Ensure all licenses are compliant with project policy
+          - Check GitHub Security tab for detailed reports
+
+          ---
+
+          **Note**: Some warnings may be acceptable depending on context. Review each finding carefully.
+          EOF
+
+      - name: Check Overall Status
+        run: |
+          if [[ "${{ contains(needs.*.result, 'failure') }}" == "true" ]]; then
+            echo "⚠️ Some security scans completed with issues"
+            echo "Please review the detailed reports"
+          else
+            echo "✅ All security scans completed"
+          fi

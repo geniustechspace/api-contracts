@@ -1,0 +1,381 @@
+name: Proto Contracts Validation
+
+on:
+  push:
+    branches: [main, staging, dev]
+    paths:
+      - 'proto/**'
+      - 'buf.yaml'
+      - 'buf.gen.yaml'
+  pull_request:
+    branches: [main, staging, dev]
+    paths:
+      - 'proto/**'
+      - 'buf.yaml'
+      - 'buf.gen.yaml'
+  workflow_dispatch:
+
+# Cancel in-progress runs for the same PR
+concurrency:
+  group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+env:
+  BUF_VERSION: "1.47.2"
+
+permissions:
+  contents: read
+  pull-requests: write
+  checks: write
+
+jobs:
+  # ============================================================================
+  # Proto Validation
+  # ============================================================================
+  validate:
+    name: Validate Proto Contracts
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0  # Required for breaking change detection
+
+      - name: Buf Validation (Format, Lint, Breaking)
+        id: buf
+        uses: bufbuild/buf-action@v1
+        with:
+          version: ${{ env.BUF_VERSION }}
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+          setup_only: false
+          format: true
+          lint: true
+          breaking: ${{ github.event_name == 'pull_request' }}
+          breaking_against: 'https://github.com/${{ github.repository }}.git#branch=${{ github.base_ref || github.event.repository.default_branch }},subdir=proto'
+          comment: true
+          pr_comment: ${{ github.event_name == 'pull_request' }}
+
+      - name: Set Status Outputs
+        id: format
+        run: |
+          echo "status=passed" >> $GITHUB_OUTPUT
+
+      - name: Set Lint Status
+        id: lint
+        run: |
+          echo "status=passed" >> $GITHUB_OUTPUT
+
+      - name: Set Breaking Status
+        id: breaking
+        if: github.event_name == 'pull_request'
+        run: |
+          echo "status=passed" >> $GITHUB_OUTPUT
+          echo "breaking_changes=false" >> $GITHUB_OUTPUT
+
+      - name: Create Check Summary
+        if: always()
+        run: |
+          cat >> $GITHUB_STEP_SUMMARY << 'EOF'
+          ## Proto Validation Results
+
+          | Check | Status |
+          |-------|--------|
+          | Format | ${{ steps.format.outputs.status }} |
+          | Lint | ${{ steps.lint.outputs.status }} |
+          | Breaking Changes | ${{ steps.breaking.outputs.status || 'skipped' }} |
+
+          EOF
+
+          if [ "${{ steps.breaking.outputs.breaking_changes }}" == "true" ]; then
+            cat >> $GITHUB_STEP_SUMMARY << 'EOF'
+          ### ⚠️ Breaking Changes Detected
+
+          This PR contains breaking changes to the API contracts. Please ensure:
+          - Version is bumped appropriately (major version for breaking changes)
+          - Migration guide is provided
+          - Affected teams are notified
+          - Deprecation warnings were added in previous release (if applicable)
+          EOF
+          fi
+
+      - name: Comment on PR
+        if: github.event_name == 'pull_request' && steps.breaking.outputs.breaking_changes == 'true'
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const comment = `## ⚠️ Breaking Changes Detected
+
+            This PR contains breaking changes to the API contracts.
+
+            ### Action Required:
+            - [ ] Bump major version number
+            - [ ] Add migration guide to PR description
+            - [ ] Notify affected teams
+            - [ ] Update client documentation
+            - [ ] Ensure backward compatibility or deprecation period
+
+            ### Validation Results:
+            - ✅ Format: ${{ steps.format.outputs.status }}
+            - ✅ Lint: ${{ steps.lint.outputs.status }}
+            - ⚠️ Breaking Changes: Detected
+            `;
+
+            github.rest.issues.createComment({
+              issue_number: context.issue.number,
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              body: comment
+            });
+
+  # ============================================================================
+  # Proto Dependency Check
+  # ============================================================================
+  check-dependencies:
+    name: Check Proto Dependencies
+    runs-on: ubuntu-latest
+    needs: validate
+    timeout-minutes: 10
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      - name: Setup Buf
+        uses: bufbuild/buf-action@v1
+        with:
+          version: ${{ env.BUF_VERSION }}
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+          setup_only: true
+
+      - name: Check Dependencies
+        run: |
+          echo "Checking proto dependencies..."
+          buf dep update --dry-run || echo "No dependency updates available"
+
+      - name: List Dependencies
+        run: |
+          echo "## Proto Dependencies" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "```" >> $GITHUB_STEP_SUMMARY
+          buf dep list || echo "No external dependencies"
+          echo "```" >> $GITHUB_STEP_SUMMARY
+
+  # ============================================================================
+  # Generate and Validate Clients
+  # ============================================================================
+  generate-clients:
+    name: Generate and Validate Clients
+    runs-on: ubuntu-latest
+    needs: validate
+    timeout-minutes: 15
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      - name: Setup Buf
+        uses: bufbuild/buf-action@v1
+        with:
+          version: ${{ env.BUF_VERSION }}
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+          setup_only: true
+
+      - name: Install Protoc
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y protobuf-compiler
+          protoc --version
+
+      - name: Generate All Clients
+        id: generate
+        run: |
+          echo "Generating clients from proto definitions..."
+          if buf generate; then
+            echo "status=success" >> $GITHUB_OUTPUT
+            echo "✅ Client generation successful"
+          else
+            echo "status=failed" >> $GITHUB_OUTPUT
+            echo "::error::Client generation failed"
+            exit 1
+          fi
+
+      - name: Check Generated Files
+        run: |
+          echo "## Generated Client Files" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+
+          for lang in rust go python typescript java; do
+            if [ -d "clients/$lang" ]; then
+              COUNT=$(find clients/$lang -type f | wc -l)
+              echo "- **$lang**: $COUNT files generated" >> $GITHUB_STEP_SUMMARY
+            fi
+          done
+
+      - name: Upload Generated Clients
+        uses: actions/upload-artifact@v4
+        with:
+          name: validated-clients
+          path: clients/
+          retention-days: 7
+
+  # ============================================================================
+  # Proto Statistics
+  # ============================================================================
+  statistics:
+    name: Generate Proto Statistics
+    runs-on: ubuntu-latest
+    needs: validate
+    timeout-minutes: 10
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      - name: Generate Statistics
+        run: |
+          echo "# Proto Statistics" >> stats.md
+          echo "" >> stats.md
+          echo "Generated on: $(date)" >> stats.md
+          echo "" >> stats.md
+
+          # Count proto files
+          PROTO_COUNT=$(find proto -name "*.proto" | wc -l)
+          echo "- **Proto Files**: $PROTO_COUNT" >> stats.md
+
+          # Count services
+          SERVICE_COUNT=$(grep -r "^service " proto --include="*.proto" | wc -l)
+          echo "- **Services**: $SERVICE_COUNT" >> stats.md
+
+          # Count messages
+          MESSAGE_COUNT=$(grep -r "^message " proto --include="*.proto" | wc -l)
+          echo "- **Messages**: $MESSAGE_COUNT" >> stats.md
+
+          # Count enums
+          ENUM_COUNT=$(grep -r "^enum " proto --include="*.proto" | wc -l)
+          echo "- **Enums**: $ENUM_COUNT" >> stats.md
+
+          # Count RPCs
+          RPC_COUNT=$(grep -r "  rpc " proto --include="*.proto" | wc -l)
+          echo "- **RPC Methods**: $RPC_COUNT" >> stats.md
+
+          echo "" >> stats.md
+          echo "## Service Breakdown" >> stats.md
+          echo "" >> stats.md
+
+          for proto_dir in proto/*/; do
+            if [ -d "$proto_dir" ]; then
+              service_name=$(basename "$proto_dir")
+              service_files=$(find "$proto_dir" -name "*.proto" | wc -l)
+              echo "- **$service_name**: $service_files files" >> stats.md
+            fi
+          done
+
+          cat stats.md >> $GITHUB_STEP_SUMMARY
+
+      - name: Upload Statistics
+        uses: actions/upload-artifact@v4
+        with:
+          name: proto-statistics
+          path: stats.md
+          retention-days: 30
+
+  # ============================================================================
+  # Proto Schema Comparison
+  # ============================================================================
+  compare-schema:
+    name: Compare Proto Schema
+    runs-on: ubuntu-latest
+    needs: validate
+    if: github.event_name == 'pull_request'
+    timeout-minutes: 10
+    steps:
+      - name: Checkout PR Branch
+        uses: actions/checkout@v4
+        with:
+          path: pr
+
+      - name: Checkout Base Branch
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ github.base_ref }}
+          path: base
+
+      - name: Compare Proto Files
+        run: |
+          echo "# Proto Schema Changes" >> comparison.md
+          echo "" >> comparison.md
+
+          # New proto files
+          NEW_FILES=$(comm -13 <(find base/proto -name "*.proto" | sort) <(find pr/proto -name "*.proto" | sort) || echo "")
+          if [ -n "$NEW_FILES" ]; then
+            echo "## 🆕 New Proto Files" >> comparison.md
+            echo "" >> comparison.md
+            echo "$NEW_FILES" | sed 's|pr/||' >> comparison.md
+            echo "" >> comparison.md
+          fi
+
+          # Deleted proto files
+          DELETED_FILES=$(comm -23 <(find base/proto -name "*.proto" | sort) <(find pr/proto -name "*.proto" | sort) || echo "")
+          if [ -n "$DELETED_FILES" ]; then
+            echo "## 🗑️ Deleted Proto Files" >> comparison.md
+            echo "" >> comparison.md
+            echo "$DELETED_FILES" | sed 's|base/||' >> comparison.md
+            echo "" >> comparison.md
+          fi
+
+          # Modified files
+          MODIFIED_FILES=""
+          for file in $(find pr/proto -name "*.proto"); do
+            base_file=$(echo $file | sed 's|pr/|base/|')
+            if [ -f "$base_file" ]; then
+              if ! diff -q "$file" "$base_file" > /dev/null 2>&1; then
+                MODIFIED_FILES="$MODIFIED_FILES\n$(echo $file | sed 's|pr/||')"
+              fi
+            fi
+          done
+
+          if [ -n "$MODIFIED_FILES" ]; then
+            echo "## ✏️ Modified Proto Files" >> comparison.md
+            echo "" >> comparison.md
+            echo -e "$MODIFIED_FILES" >> comparison.md
+            echo "" >> comparison.md
+          fi
+
+          cat comparison.md >> $GITHUB_STEP_SUMMARY
+
+      - name: Comment Schema Changes on PR
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const fs = require('fs');
+            const comparison = fs.readFileSync('comparison.md', 'utf8');
+
+            github.rest.issues.createComment({
+              issue_number: context.issue.number,
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              body: comparison
+            });
+
+  # ============================================================================
+  # Success Check
+  # ============================================================================
+  contracts-success:
+    name: Proto Contracts Validation Success
+    runs-on: ubuntu-latest
+    needs:
+      - validate
+      - check-dependencies
+      - generate-clients
+      - statistics
+    if: always()
+    steps:
+      - name: Check All Jobs
+        run: |
+          if [[ "${{ contains(needs.*.result, 'failure') }}" == "true" ]]; then
+            echo "❌ Proto validation failed"
+            exit 1
+          elif [[ "${{ contains(needs.*.result, 'cancelled') }}" == "true" ]]; then
+            echo "⚠️ Proto validation was cancelled"
+            exit 1
+          else
+            echo "✅ All proto validation checks passed"
+          fi

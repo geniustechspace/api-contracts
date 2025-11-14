@@ -18,11 +18,10 @@ import "validate/validate.proto";
 
 // Go: Backend services package
 option go_package = "github.com/geniustechspace/api-contracts/gen/go/core/v1;corev1";
-
-// Java: Enterprise integration package
-option java_package = "com.geniustechspace.api.core.v1";
 option java_multiple_files = true;
 option java_outer_classname = "PaginationProto";
+// Java: Enterprise integration package
+option java_package = "com.geniustechspace.api.core.v1";
 
 // =============================================================================
 // Pagination Request
@@ -33,13 +32,13 @@ message PaginationRequest {
   // Page number (1-based, for offset pagination).
   // If both page and cursor are specified, cursor takes precedence.
   int32 page = 1 [(validate.rules).int32 = {
-    gte: 1,
+    gte: 1
     lte: 10000
   }];
 
   // Page size (number of items per page).
   int32 page_size = 2 [(validate.rules).int32 = {
-    gte: 1,
+    gte: 1
     lte: 1000
   }];
 

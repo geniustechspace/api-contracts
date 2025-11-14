@@ -1,0 +1,246 @@
+name: Dependency Updates
+
+on:
+  schedule:
+    # Run every Monday at 9 AM UTC
+    - cron: '0 9 * * 1'
+  workflow_dispatch:
+
+env:
+  BUF_VERSION: "1.47.2"
+
+permissions:
+  contents: write
+  pull-requests: write
+
+concurrency:
+  group: dependency-updates
+  cancel-in-progress: false
+
+jobs:
+  # ============================================================================
+  # Update Proto Dependencies
+  # ============================================================================
+  update-proto-deps:
+    name: Update Proto Dependencies
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      - name: Setup Buf
+        uses: bufbuild/buf-action@v1
+        with:
+          version: ${{ env.BUF_VERSION }}
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+          setup_only: true
+
+      - name: Update Proto Dependencies
+        run: |
+          buf dep update proto || echo "No updates available"
+
+      - name: Create Pull Request
+        uses: peter-evans/create-pull-request@v6
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+          commit-message: 'chore(deps): update proto dependencies'
+          title: '🔄 Update Proto Dependencies'
+          body: |
+            ## Proto Dependencies Update
+
+            This PR updates proto dependencies to their latest versions.
+
+            ### Changes
+            - Updated proto dependencies via `buf dep update`
+
+            ### Checklist
+            - [ ] Review dependency changes
+            - [ ] Run proto validation
+            - [ ] Test client generation
+            - [ ] Check for breaking changes
+          branch: deps/proto-updates
+          labels: dependencies, proto
+          delete-branch: true
+
+  # ============================================================================
+  # Dependabot Configuration Check
+  # ============================================================================
+  check-dependabot:
+    name: Check Dependabot Configuration
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      - name: Verify Dependabot Config
+        run: |
+          if [ ! -f .github/dependabot.yml ]; then
+            echo "⚠️ Dependabot configuration not found"
+            echo "Creating default configuration..."
+
+            mkdir -p .github
+            cat > .github/dependabot.yml << 'EOF'
+          version: 2
+          updates:
+            # GitHub Actions
+            - package-ecosystem: "github-actions"
+              directory: "/"
+              schedule:
+                interval: "weekly"
+              labels:
+                - "dependencies"
+                - "github-actions"
+              open-pull-requests-limit: 10
+
+            # Go modules
+            - package-ecosystem: "gomod"
+              directory: "/clients/go/core"
+              schedule:
+                interval: "weekly"
+              labels:
+                - "dependencies"
+                - "go"
+
+            - package-ecosystem: "gomod"
+              directory: "/clients/go/idp"
+              schedule:
+                interval: "weekly"
+              labels:
+                - "dependencies"
+                - "go"
+
+            - package-ecosystem: "gomod"
+              directory: "/clients/go/notification"
+              schedule:
+                interval: "weekly"
+              labels:
+                - "dependencies"
+                - "go"
+
+            # Cargo (Rust)
+            - package-ecosystem: "cargo"
+              directory: "/clients/rust"
+              schedule:
+                interval: "weekly"
+              labels:
+                - "dependencies"
+                - "rust"
+
+            # pip (Python)
+            - package-ecosystem: "pip"
+              directory: "/clients/python/core"
+              schedule:
+                interval: "weekly"
+              labels:
+                - "dependencies"
+                - "python"
+
+            - package-ecosystem: "pip"
+              directory: "/clients/python/idp"
+              schedule:
+                interval: "weekly"
+              labels:
+                - "dependencies"
+                - "python"
+
+            - package-ecosystem: "pip"
+              directory: "/clients/python/notification"
+              schedule:
+                interval: "weekly"
+              labels:
+                - "dependencies"
+                - "python"
+
+            # npm (TypeScript)
+            - package-ecosystem: "npm"
+              directory: "/clients/typescript"
+              schedule:
+                interval: "weekly"
+              labels:
+                - "dependencies"
+                - "typescript"
+              versioning-strategy: increase
+
+            # Maven (Java)
+            - package-ecosystem: "maven"
+              directory: "/clients/java"
+              schedule:
+                interval: "weekly"
+              labels:
+                - "dependencies"
+                - "java"
+          EOF
+
+            git config user.name "github-actions[bot]"
+            git config user.email "github-actions[bot]@users.noreply.github.com"
+            git add .github/dependabot.yml
+            git commit -m "chore: add dependabot configuration"
+            git push
+          else
+            echo "✅ Dependabot configuration exists"
+          fi
+
+  # ============================================================================
+  # Update Toolchain Versions
+  # ============================================================================
+  update-toolchains:
+    name: Update Toolchain Versions
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      - name: Check Latest Rust Version
+        id: rust
+        run: |
+          CURRENT=$(grep 'RUST_VERSION:' .github/workflows/*.yml | head -1 | cut -d'"' -f2)
+          LATEST=$(curl -s https://api.github.com/repos/rust-lang/rust/releases/latest | jq -r .tag_name | sed 's/^rust-//')
+          echo "current=$CURRENT" >> $GITHUB_OUTPUT
+          echo "latest=$LATEST" >> $GITHUB_OUTPUT
+          echo "Rust: $CURRENT -> $LATEST"
+
+      - name: Check Latest Go Version
+        id: go
+        run: |
+          CURRENT=$(grep 'GO_VERSION:' .github/workflows/*.yml | head -1 | cut -d'"' -f2)
+          LATEST=$(curl -s https://go.dev/VERSION?m=text | head -1 | sed 's/go//')
+          echo "current=$CURRENT" >> $GITHUB_OUTPUT
+          echo "latest=$LATEST" >> $GITHUB_OUTPUT
+          echo "Go: $CURRENT -> $LATEST"
+
+      - name: Check Latest Node.js LTS Version
+        id: node
+        run: |
+          CURRENT=$(grep 'NODE_VERSION:' .github/workflows/*.yml | head -1 | cut -d'"' -f2)
+          LATEST=$(curl -s https://nodejs.org/dist/index.json | jq -r '[.[] | select(.lts != false)][0].version' | sed 's/v//')
+          echo "current=$CURRENT" >> $GITHUB_OUTPUT
+          echo "latest=$LATEST" >> $GITHUB_OUTPUT
+          echo "Node.js: $CURRENT -> $LATEST"
+
+      - name: Check Latest Python Version
+        id: python
+        run: |
+          CURRENT=$(grep 'PYTHON_VERSION:' .github/workflows/*.yml | head -1 | cut -d'"' -f2)
+          LATEST=$(curl -s https://www.python.org/ftp/python/ | grep -oP '3\.\d+\.\d+' | sort -V | tail -1)
+          echo "current=$CURRENT" >> $GITHUB_OUTPUT
+          echo "latest=$LATEST" >> $GITHUB_OUTPUT
+          echo "Python: $CURRENT -> $LATEST"
+
+      - name: Create Summary
+        run: |
+          cat >> $GITHUB_STEP_SUMMARY << EOF
+          # Toolchain Version Check
+
+          | Tool | Current | Latest | Status |
+          |------|---------|--------|--------|
+          | Rust | ${{ steps.rust.outputs.current }} | ${{ steps.rust.outputs.latest }} | $([ "${{ steps.rust.outputs.current }}" == "${{ steps.rust.outputs.latest }}" ] && echo "✅" || echo "⬆️") |
+          | Go | ${{ steps.go.outputs.current }} | ${{ steps.go.outputs.latest }} | $([ "${{ steps.go.outputs.current }}" == "${{ steps.go.outputs.latest }}" ] && echo "✅" || echo "⬆️") |
+          | Node.js | ${{ steps.node.outputs.current }} | ${{ steps.node.outputs.latest }} | $([ "${{ steps.node.outputs.current }}" == "${{ steps.node.outputs.latest }}" ] && echo "✅" || echo "⬆️") |
+          | Python | ${{ steps.python.outputs.current }} | ${{ steps.python.outputs.latest }} | $([ "${{ steps.python.outputs.current }}" == "${{ steps.python.outputs.latest }}" ] && echo "✅" || echo "⬆️") |
+
+          ⬆️ = Update available
+          ✅ = Up to date
+          EOF

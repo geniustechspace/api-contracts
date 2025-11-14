@@ -2,47 +2,417 @@ name: Documentation
 
 on:
   push:
-    branches: [main]
+    branches: [main, releases/*]
     paths:
       - 'proto/**'
       - 'docs/**'
       - 'README.md'
+      - 'ARCHITECTURE.md'
+      - '**/README.md'
+  pull_request:
+    branches: [main]
+    paths:
+      - 'proto/**'
+      - 'docs/**'
   workflow_dispatch:
+  schedule:
+    # Rebuild docs weekly to keep them fresh
+    - cron: '0 0 * * 0'
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+# Cancel in-progress runs
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  BUF_VERSION: "1.47.2"
+  NODE_VERSION: "22"
+  PYTHON_VERSION: "3.12"
 
 jobs:
-  generate-docs:
-    name: Generate Documentation
+  # ============================================================================
+  # Generate Proto Documentation
+  # ============================================================================
+  generate-proto-docs:
+    name: Generate Proto Documentation
     runs-on: ubuntu-latest
+    timeout-minutes: 15
     steps:
-      - uses: actions/checkout@v4
+      - name: Checkout Code
+        uses: actions/checkout@v4
 
       - name: Setup Buf
-        uses: bufbuild/buf-setup-action@v1
+        uses: bufbuild/buf-action@v1
         with:
-          version: "1.47.2"
+          version: ${{ env.BUF_VERSION }}
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+          setup_only: true
 
-      - name: Generate Proto Documentation
+      - name: Install Protoc
         run: |
-          buf generate --template buf.gen.yaml --path proto
+          sudo apt-get update
+          sudo apt-get install -y protobuf-compiler
+
+      - name: Install protoc-gen-doc
+        run: |
+          wget https://github.com/pseudomuto/protoc-gen-doc/releases/download/v1.5.1/protoc-gen-doc_1.5.1_linux_amd64.tar.gz
+          tar -xzf protoc-gen-doc_1.5.1_linux_amd64.tar.gz
+          sudo mv protoc-gen-doc /usr/local/bin/
+          sudo chmod +x /usr/local/bin/protoc-gen-doc
+
+      - name: Generate Proto HTML Documentation
+        run: |
+          mkdir -p docs/generated/proto
+
+          # Generate HTML documentation for each service
+          for proto_dir in proto/*/; do
+            service_name=$(basename "$proto_dir")
+            echo "Generating docs for $service_name..."
+
+            protoc \
+              --doc_out=docs/generated/proto \
+              --doc_opt=html,$service_name.html \
+              --proto_path=proto \
+              proto/$service_name/**/*.proto || echo "Skipped $service_name"
+          done
+
+      - name: Generate Proto Markdown Documentation
+        run: |
+          mkdir -p docs/generated/proto/markdown
+
+          # Generate Markdown documentation
+          for proto_dir in proto/*/; do
+            service_name=$(basename "$proto_dir")
+            echo "Generating markdown docs for $service_name..."
+
+            protoc \
+              --doc_out=docs/generated/proto/markdown \
+              --doc_opt=markdown,$service_name.md \
+              --proto_path=proto \
+              proto/$service_name/**/*.proto || echo "Skipped $service_name"
+          done
+
+      - name: Upload Proto Documentation
+        uses: actions/upload-artifact@v4
+        with:
+          name: proto-docs
+          path: docs/generated/proto/
+          retention-days: 30
+
+  # ============================================================================
+  # Build Documentation Site
+  # ============================================================================
+  build-docs-site:
+    name: Build Documentation Site
+    runs-on: ubuntu-latest
+    needs: generate-proto-docs
+    timeout-minutes: 20
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      - name: Download Proto Documentation
+        uses: actions/download-artifact@v4
+        with:
+          name: proto-docs
+          path: docs/generated/proto/
 
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
-          node-version: '20'
+          node-version: ${{ env.NODE_VERSION }}
+          cache: 'npm'
 
-      - name: Install documentation tools
-        run: |
-          npm install -g @microsoft/api-documenter @microsoft/api-extractor
-
-      - name: Generate API documentation
-        run: |
-          # Generate documentation for each language
-          echo "Documentation generation placeholder"
-
-      - name: Deploy to GitHub Pages
-        uses: peaceiris/actions-gh-pages@v3
-        if: github.ref == 'refs/heads/main'
+      - name: Setup Python
+        uses: actions/setup-python@v5
         with:
-          github_token: ${{ secrets.GITHUB_TOKEN }}
-          publish_dir: ./docs
-          cname: api-docs.geniustechspace.com
+          python-version: ${{ env.PYTHON_VERSION }}
+
+      - name: Install MkDocs
+        run: |
+          pip install mkdocs mkdocs-material mkdocs-mermaid2-plugin pymdown-extensions
+
+      - name: Create MkDocs Configuration
+        run: |
+          cat > mkdocs.yml << 'EOF'
+          site_name: GeniusTechSpace API Contracts
+          site_description: Enterprise-grade gRPC API contracts with multi-language client generation
+          site_author: GeniusTechSpace
+          repo_name: geniustechspace/api-contracts
+          repo_url: https://github.com/geniustechspace/api-contracts
+
+          theme:
+            name: material
+            palette:
+              - scheme: default
+                primary: indigo
+                accent: indigo
+                toggle:
+                  icon: material/brightness-7
+                  name: Switch to dark mode
+              - scheme: slate
+                primary: indigo
+                accent: indigo
+                toggle:
+                  icon: material/brightness-4
+                  name: Switch to light mode
+            features:
+              - navigation.tabs
+              - navigation.sections
+              - navigation.expand
+              - navigation.top
+              - search.suggest
+              - search.highlight
+              - content.code.copy
+
+          nav:
+            - Home: README.md
+            - Architecture: ARCHITECTURE.md
+            - Quick Start: QUICKSTART.md
+            - Contributing: CONTRIBUTING.md
+            - Documentation:
+              - Overview: docs/README.md
+              - Architecture: docs/architecture/README.md
+              - Versioning: docs/architecture/versioning-strategy.md
+              - Standards: docs/standards/README.md
+              - Service Generator: docs/SERVICE_GENERATOR_QUICKSTART.md
+            - Guides:
+              - Adding Services: docs/guides/adding-new-services.md
+              - Extending Repository: docs/guides/extending-the-repository.md
+              - Self Discovery: docs/SELF_DISCOVERY_MIGRATION.md
+            - Compliance:
+              - Overview: docs/compliance/README.md
+              - GDPR: docs/compliance/gdpr.md
+              - HIPAA: docs/compliance/hipaa.md
+              - SOC 2: docs/compliance/soc2.md
+              - PCI DSS: docs/compliance/pci-dss.md
+            - Proto Reference:
+              - Core: docs/generated/proto/markdown/core.md
+              - IDP: docs/generated/proto/markdown/idp.md
+              - Notification: docs/generated/proto/markdown/notification.md
+
+          markdown_extensions:
+            - pymdownx.highlight:
+                anchor_linenums: true
+            - pymdownx.superfences:
+                custom_fences:
+                  - name: mermaid
+                    class: mermaid
+                    format: !!python/name:pymdownx.superfences.fence_code_format
+            - pymdownx.tabbed:
+                alternate_style: true
+            - admonition
+            - pymdownx.details
+            - pymdownx.inlinehilite
+            - pymdownx.snippets
+            - pymdownx.tasklist:
+                custom_checkbox: true
+            - attr_list
+            - md_in_html
+            - toc:
+                permalink: true
+
+          plugins:
+            - search
+            - mermaid2
+          EOF
+
+      - name: Create Index Page
+        run: |
+          mkdir -p docs/generated
+          cat > docs/generated/index.md << 'EOF'
+          # API Documentation Home
+
+          Welcome to the GeniusTechSpace API Contracts documentation.
+
+          ## Quick Links
+
+          - [Getting Started](../QUICKSTART.md)
+          - [Architecture Overview](../ARCHITECTURE.md)
+          - [Contributing Guide](../CONTRIBUTING.md)
+
+          ## Proto Services
+
+          - [Core Services](proto/markdown/core.md) - Multitenancy, context, errors
+          - [IDP Services](proto/markdown/idp.md) - Identity and authentication
+          - [Notification Services](proto/markdown/notification.md) - Messaging and notifications
+
+          ## Client Libraries
+
+          - **Rust** - Primary implementation language
+          - **Go** - High-performance services
+          - **Python** - Data science and scripting
+          - **TypeScript** - Web and Node.js applications
+          - **Java** - Enterprise applications
+          EOF
+
+      - name: Build Documentation
+        run: mkdocs build --strict
+
+      - name: Upload Documentation Artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: documentation-site
+          path: site/
+          retention-days: 30
+
+      - name: Upload Pages Artifact
+        if: github.ref == 'refs/heads/main' && github.event_name == 'push'
+        uses: actions/upload-pages-artifact@v3
+        with:
+          path: site/
+
+  # ============================================================================
+  # Deploy to GitHub Pages
+  # ============================================================================
+  deploy-pages:
+    name: Deploy to GitHub Pages
+    runs-on: ubuntu-latest
+    needs: build-docs-site
+    if: github.ref == 'refs/heads/main' && github.event_name == 'push'
+    timeout-minutes: 10
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - name: Deploy to GitHub Pages
+        id: deployment
+        uses: actions/deploy-pages@v4
+
+  # ============================================================================
+  # Validate Documentation Links
+  # ============================================================================
+  validate-links:
+    name: Validate Documentation Links
+    runs-on: ubuntu-latest
+    needs: build-docs-site
+    timeout-minutes: 10
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      - name: Download Documentation
+        uses: actions/download-artifact@v4
+        with:
+          name: documentation-site
+          path: site/
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+
+      - name: Install Link Checker
+        run: npm install -g markdown-link-check
+
+      - name: Check Markdown Links
+        run: |
+          find . -name "*.md" -not -path "*/node_modules/*" -not -path "*/.venv/*" | \
+          xargs -I {} markdown-link-check {} --config .markdown-link-check.json || true
+        continue-on-error: true
+
+      - name: Create Link Check Config
+        run: |
+          cat > .markdown-link-check.json << 'EOF'
+          {
+            "ignorePatterns": [
+              {
+                "pattern": "^http://localhost"
+              },
+              {
+                "pattern": "^https://.*\\.local"
+              }
+            ],
+            "timeout": "20s",
+            "retryOn429": true,
+            "retryCount": 3,
+            "aliveStatusCodes": [200, 206, 301, 302, 307, 308, 403, 429]
+          }
+          EOF
+
+  # ============================================================================
+  # Generate API Coverage Report
+  # ============================================================================
+  api-coverage:
+    name: API Coverage Report
+    runs-on: ubuntu-latest
+    needs: generate-proto-docs
+    timeout-minutes: 10
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      - name: Generate Coverage Report
+        run: |
+          echo "# API Coverage Report" > coverage-report.md
+          echo "" >> coverage-report.md
+          echo "Generated on: $(date)" >> coverage-report.md
+          echo "" >> coverage-report.md
+
+          # Count proto files
+          PROTO_COUNT=$(find proto -name "*.proto" | wc -l)
+          echo "## Proto Files: $PROTO_COUNT" >> coverage-report.md
+          echo "" >> coverage-report.md
+
+          # Count services
+          SERVICE_COUNT=$(grep -r "^service " proto --include="*.proto" | wc -l)
+          echo "## Services: $SERVICE_COUNT" >> coverage-report.md
+          echo "" >> coverage-report.md
+
+          # Count messages
+          MESSAGE_COUNT=$(grep -r "^message " proto --include="*.proto" | wc -l)
+          echo "## Messages: $MESSAGE_COUNT" >> coverage-report.md
+          echo "" >> coverage-report.md
+
+          # List services
+          echo "## Service Definitions" >> coverage-report.md
+          grep -r "^service " proto --include="*.proto" | sed 's/proto\//- /' >> coverage-report.md
+
+      - name: Upload Coverage Report
+        uses: actions/upload-artifact@v4
+        with:
+          name: api-coverage-report
+          path: coverage-report.md
+          retention-days: 30
+
+      - name: Comment on PR
+        if: github.event_name == 'pull_request'
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const fs = require('fs');
+            const report = fs.readFileSync('coverage-report.md', 'utf8');
+
+            github.rest.issues.createComment({
+              issue_number: context.issue.number,
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              body: report
+            });
+
+  # ============================================================================
+  # Success Check
+  # ============================================================================
+  docs-success:
+    name: Documentation Success
+    runs-on: ubuntu-latest
+    needs:
+      - generate-proto-docs
+      - build-docs-site
+      - validate-links
+      - api-coverage
+    if: always()
+    steps:
+      - name: Check Status
+        run: |
+          if [[ "${{ contains(needs.*.result, 'failure') }}" == "true" ]]; then
+            echo "❌ Documentation build failed"
+            exit 1
+          else
+            echo "✅ Documentation generated successfully"
+          fi

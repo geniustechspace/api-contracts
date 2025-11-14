@@ -15,18 +15,17 @@ syntax = "proto3";
 
 package core.v1;
 
-import "google/protobuf/timestamp.proto";
-import "google/protobuf/struct.proto";
 import "core/v1/tenant.proto";
+import "google/protobuf/struct.proto";
+import "google/protobuf/timestamp.proto";
 import "validate/validate.proto";
 
 // Go: Backend services package
 option go_package = "github.com/geniustechspace/api-contracts/gen/go/core/v1;corev1";
-
-// Java: Enterprise integration package
-option java_package = "com.geniustechspace.api.core.v1";
 option java_multiple_files = true;
 option java_outer_classname = "AuditProto";
+// Java: Enterprise integration package
+option java_package = "com.geniustechspace.api.core.v1";
 
 // =============================================================================
 // Audit Log Entry

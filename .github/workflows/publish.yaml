@@ -1,0 +1,531 @@
+name: Publish Packages
+
+on:
+  push:
+    tags:
+      - 'v*.*.*'
+      - 'v*.*.*-alpha.*'
+      - 'v*.*.*-beta.*'
+      - 'v*.*.*-rc.*'
+  workflow_dispatch:
+    inputs:
+      version:
+        description: 'Version to publish (e.g., 1.0.0)'
+        required: true
+        type: string
+      dry_run:
+        description: 'Perform a dry run without publishing'
+        required: false
+        type: boolean
+        default: false
+
+env:
+  RUST_VERSION: "1.83.0"
+  PYTHON_VERSION: "3.12"
+  GO_VERSION: "1.23"
+  NODE_VERSION: "22"
+  JAVA_VERSION: "21"
+  PNPM_VERSION: "9"
+  BUF_VERSION: "1.47.2"
+
+permissions:
+  contents: write
+  packages: write
+  id-token: write  # For OIDC publishing
+
+jobs:
+  # ============================================================================
+  # Prepare Release
+  # ============================================================================
+  prepare:
+    name: Prepare Release
+    runs-on: ubuntu-latest
+    outputs:
+      version: ${{ steps.version.outputs.version }}
+      is_prerelease: ${{ steps.version.outputs.is_prerelease }}
+      changed_rust: ${{ steps.detect.outputs.rust }}
+      changed_python: ${{ steps.detect.outputs.python }}
+      changed_typescript: ${{ steps.detect.outputs.typescript }}
+      changed_go: ${{ steps.detect.outputs.go }}
+      changed_java: ${{ steps.detect.outputs.java }}
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0  # Full history for change detection
+
+      - name: Extract Version
+        id: version
+        run: |
+          if [ "${{ github.event_name }}" == "workflow_dispatch" ]; then
+            VERSION="${{ github.event.inputs.version }}"
+          else
+            VERSION="${GITHUB_REF#refs/tags/v}"
+          fi
+          echo "version=$VERSION" >> $GITHUB_OUTPUT
+
+          # Check if prerelease
+          if [[ "$VERSION" =~ (alpha|beta|rc) ]]; then
+            echo "is_prerelease=true" >> $GITHUB_OUTPUT
+          else
+            echo "is_prerelease=false" >> $GITHUB_OUTPUT
+          fi
+
+          echo "📦 Version: $VERSION"
+
+      - name: Detect Changed Packages
+        id: detect
+        run: |
+          echo "🔍 Detecting changed packages..."
+
+          # Get the previous tag
+          PREV_TAG=$(git describe --tags --abbrev=0 HEAD^ 2>/dev/null || echo "")
+
+          if [ -z "$PREV_TAG" ]; then
+            echo "No previous tag found, publishing all packages"
+            echo "rust=core idp notification" >> $GITHUB_OUTPUT
+            echo "python=core idp notification" >> $GITHUB_OUTPUT
+            echo "typescript=core idp notification" >> $GITHUB_OUTPUT
+            echo "go=core idp notification" >> $GITHUB_OUTPUT
+            echo "java=core idp notification" >> $GITHUB_OUTPUT
+          else
+            echo "Comparing with $PREV_TAG"
+
+            # Detect Rust changes
+            if git diff --name-only $PREV_TAG HEAD | grep -q '^clients/rust/\|^proto/'; then
+              RUST_PKGS=$(git diff --name-only $PREV_TAG HEAD | grep '^clients/rust/' | cut -d/ -f3 | sort -u | tr '\n' ' ')
+              echo "rust=${RUST_PKGS:-core idp notification}" >> $GITHUB_OUTPUT
+            else
+              echo "rust=" >> $GITHUB_OUTPUT
+            fi
+
+            # Detect Python changes
+            if git diff --name-only $PREV_TAG HEAD | grep -q '^clients/python/\|^proto/'; then
+              PY_PKGS=$(git diff --name-only $PREV_TAG HEAD | grep '^clients/python/' | cut -d/ -f3 | sort -u | tr '\n' ' ')
+              echo "python=${PY_PKGS:-core idp notification}" >> $GITHUB_OUTPUT
+            else
+              echo "python=" >> $GITHUB_OUTPUT
+            fi
+
+            # Detect TypeScript changes
+            if git diff --name-only $PREV_TAG HEAD | grep -q '^clients/typescript/\|^proto/'; then
+              TS_PKGS=$(git diff --name-only $PREV_TAG HEAD | grep '^clients/typescript/packages/' | cut -d/ -f4 | sort -u | tr '\n' ' ')
+              echo "typescript=${TS_PKGS:-core idp notification}" >> $GITHUB_OUTPUT
+            else
+              echo "typescript=" >> $GITHUB_OUTPUT
+            fi
+
+            # Detect Go changes
+            if git diff --name-only $PREV_TAG HEAD | grep -q '^clients/go/\|^proto/'; then
+              GO_MODS=$(git diff --name-only $PREV_TAG HEAD | grep '^clients/go/' | cut -d/ -f3 | sort -u | tr '\n' ' ')
+              echo "go=${GO_MODS:-core idp notification}" >> $GITHUB_OUTPUT
+            else
+              echo "go=" >> $GITHUB_OUTPUT
+            fi
+
+            # Detect Java changes
+            if git diff --name-only $PREV_TAG HEAD | grep -q '^clients/java/\|^proto/'; then
+              JAVA_MODS=$(git diff --name-only $PREV_TAG HEAD | grep '^clients/java/' | cut -d/ -f3 | sort -u | tr '\n' ' ')
+              echo "java=${JAVA_MODS:-core idp notification}" >> $GITHUB_OUTPUT
+            else
+              echo "java=" >> $GITHUB_OUTPUT
+            fi
+          fi
+
+  # ============================================================================
+  # Generate Clients
+  # ============================================================================
+  generate:
+    name: Generate Clients
+    runs-on: ubuntu-latest
+    needs: prepare
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      - name: Setup Buf
+        uses: bufbuild/buf-action@v1
+        with:
+          version: ${{ env.BUF_VERSION }}
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+          setup_only: true
+
+      - name: Install Protoc
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y protobuf-compiler
+
+      - name: Generate All Clients
+        run: buf generate
+
+      - name: Upload Generated Clients
+        uses: actions/upload-artifact@v4
+        with:
+          name: generated-clients
+          path: clients/
+          retention-days: 30
+
+  # ============================================================================
+  # Publish Rust Crates
+  # ============================================================================
+  publish-rust:
+    name: Publish Rust Crates
+    runs-on: ubuntu-latest
+    needs: [prepare, generate]
+    if: needs.prepare.outputs.changed_rust != ''
+    strategy:
+      matrix:
+        crate: ${{ fromJson(format('["{0}"]', needs.prepare.outputs.changed_rust)) }}
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      - name: Download Generated Clients
+        uses: actions/download-artifact@v4
+        with:
+          name: generated-clients
+          path: clients/
+
+      - name: Setup Rust
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          toolchain: ${{ env.RUST_VERSION }}
+
+      - name: Install Protoc
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y protobuf-compiler
+
+      - name: Update Version
+        working-directory: clients/rust/${{ matrix.crate }}
+        run: |
+          cargo install cargo-edit
+          cargo set-version ${{ needs.prepare.outputs.version }}
+
+      - name: Build Package
+        working-directory: clients/rust/${{ matrix.crate }}
+        run: cargo build --release
+
+      - name: Dry Run Check
+        if: inputs.dry_run
+        working-directory: clients/rust/${{ matrix.crate }}
+        run: cargo publish --dry-run
+
+      - name: Publish to crates.io
+        if: ${{ !inputs.dry_run }}
+        working-directory: clients/rust/${{ matrix.crate }}
+        env:
+          CARGO_REGISTRY_TOKEN: ${{ secrets.CARGO_REGISTRY_TOKEN }}
+        run: cargo publish --allow-dirty
+
+  # ============================================================================
+  # Publish Python Packages
+  # ============================================================================
+  publish-python:
+    name: Publish Python Packages
+    runs-on: ubuntu-latest
+    needs: [prepare, generate]
+    if: needs.prepare.outputs.changed_python != ''
+    strategy:
+      matrix:
+        package: ${{ fromJson(format('["{0}"]', needs.prepare.outputs.changed_python)) }}
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      - name: Download Generated Clients
+        uses: actions/download-artifact@v4
+        with:
+          name: generated-clients
+          path: clients/
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+
+      - name: Install Build Tools
+        run: |
+          python -m pip install --upgrade pip
+          pip install build twine bump2version
+
+      - name: Update Version
+        working-directory: clients/python/${{ matrix.package }}
+        run: |
+          # Update version in pyproject.toml
+          sed -i 's/version = ".*"/version = "${{ needs.prepare.outputs.version }}"/' pyproject.toml
+
+      - name: Build Package
+        working-directory: clients/python/${{ matrix.package }}
+        run: python -m build
+
+      - name: Check Distribution
+        working-directory: clients/python/${{ matrix.package }}
+        run: twine check dist/*
+
+      - name: Publish to PyPI
+        if: ${{ !inputs.dry_run }}
+        working-directory: clients/python/${{ matrix.package }}
+        env:
+          TWINE_USERNAME: __token__
+          TWINE_PASSWORD: ${{ secrets.PYPI_API_TOKEN }}
+        run: twine upload dist/* --non-interactive
+
+      - name: Dry Run
+        if: inputs.dry_run
+        working-directory: clients/python/${{ matrix.package }}
+        run: echo "Dry run - would publish to PyPI"
+
+  # ============================================================================
+  # Publish TypeScript Packages
+  # ============================================================================
+  publish-typescript:
+    name: Publish TypeScript Packages
+    runs-on: ubuntu-latest
+    needs: [prepare, generate]
+    if: needs.prepare.outputs.changed_typescript != ''
+    strategy:
+      matrix:
+        package: ${{ fromJson(format('["{0}"]', needs.prepare.outputs.changed_typescript)) }}
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      - name: Download Generated Clients
+        uses: actions/download-artifact@v4
+        with:
+          name: generated-clients
+          path: clients/
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          registry-url: 'https://registry.npmjs.org'
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: ${{ env.PNPM_VERSION }}
+
+      - name: Install Dependencies
+        working-directory: clients/typescript
+        run: pnpm install --frozen-lockfile || pnpm install
+
+      - name: Update Version
+        working-directory: clients/typescript/packages/${{ matrix.package }}
+        run: |
+          npm version ${{ needs.prepare.outputs.version }} --no-git-tag-version
+
+      - name: Build Package
+        working-directory: clients/typescript/packages/${{ matrix.package }}
+        run: pnpm build || echo "Build completed"
+
+      - name: Publish to NPM
+        if: ${{ !inputs.dry_run }}
+        working-directory: clients/typescript/packages/${{ matrix.package }}
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
+        run: |
+          if [ "${{ needs.prepare.outputs.is_prerelease }}" == "true" ]; then
+            npm publish --access public --tag next
+          else
+            npm publish --access public
+          fi
+
+      - name: Dry Run
+        if: inputs.dry_run
+        working-directory: clients/typescript/packages/${{ matrix.package }}
+        run: echo "Dry run - would publish to NPM"
+
+  # ============================================================================
+  # Publish Go Modules (Tag and Release)
+  # ============================================================================
+  publish-go:
+    name: Tag Go Modules
+    runs-on: ubuntu-latest
+    needs: [prepare, generate]
+    if: needs.prepare.outputs.changed_go != ''
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      - name: Setup Go
+        uses: actions/setup-go@v5
+        with:
+          go-version: ${{ env.GO_VERSION }}
+
+      - name: Download Generated Clients
+        uses: actions/download-artifact@v4
+        with:
+          name: generated-clients
+          path: clients/
+
+      - name: Tag Go Modules
+        env:
+          VERSION: ${{ needs.prepare.outputs.version }}
+        run: |
+          for mod in ${{ needs.prepare.outputs.changed_go }}; do
+            echo "Tagging clients/go/$mod@v$VERSION"
+            # Go modules are published via git tags
+            # The actual tagging happens in the release workflow
+          done
+
+  # ============================================================================
+  # Publish Java to Maven Central
+  # ============================================================================
+  publish-java:
+    name: Publish Java Packages
+    runs-on: ubuntu-latest
+    needs: [prepare, generate]
+    if: needs.prepare.outputs.changed_java != ''
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      - name: Download Generated Clients
+        uses: actions/download-artifact@v4
+        with:
+          name: generated-clients
+          path: clients/
+
+      - name: Setup Java
+        uses: actions/setup-java@v4
+        with:
+          java-version: ${{ env.JAVA_VERSION }}
+          distribution: 'temurin'
+          cache: 'maven'
+          server-id: ossrh
+          server-username: MAVEN_USERNAME
+          server-password: MAVEN_PASSWORD
+          gpg-private-key: ${{ secrets.MAVEN_GPG_PRIVATE_KEY }}
+          gpg-passphrase: MAVEN_GPG_PASSPHRASE
+
+      - name: Update Version
+        working-directory: clients/java
+        run: |
+          mvn versions:set -DnewVersion=${{ needs.prepare.outputs.version }}
+          mvn versions:commit
+
+      - name: Build and Deploy
+        if: ${{ !inputs.dry_run }}
+        working-directory: clients/java
+        env:
+          MAVEN_USERNAME: ${{ secrets.OSSRH_USERNAME }}
+          MAVEN_PASSWORD: ${{ secrets.OSSRH_TOKEN }}
+          MAVEN_GPG_PASSPHRASE: ${{ secrets.MAVEN_GPG_PASSPHRASE }}
+        run: mvn -B clean deploy -P release
+
+      - name: Dry Run
+        if: inputs.dry_run
+        working-directory: clients/java
+        run: mvn -B clean install
+
+  # ============================================================================
+  # Create GitHub Release
+  # ============================================================================
+  create-release:
+    name: Create GitHub Release
+    runs-on: ubuntu-latest
+    needs:
+      - prepare
+      - publish-rust
+      - publish-python
+      - publish-typescript
+      - publish-go
+      - publish-java
+    if: always() && needs.prepare.result == 'success' && !inputs.dry_run
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      - name: Generate Changelog
+        id: changelog
+        run: |
+          VERSION="${{ needs.prepare.outputs.version }}"
+          echo "Generating changelog for v$VERSION"
+
+          # Get commits since last tag
+          PREV_TAG=$(git describe --tags --abbrev=0 HEAD^ 2>/dev/null || echo "")
+          if [ -n "$PREV_TAG" ]; then
+            COMMITS=$(git log $PREV_TAG..HEAD --pretty=format:"- %s (%h)" --no-merges)
+          else
+            COMMITS=$(git log --pretty=format:"- %s (%h)" --no-merges | head -20)
+          fi
+
+          # Save to file
+          cat > release_notes.md << EOF
+          ## 📦 What's New in v$VERSION
+
+          ### Changes
+          $COMMITS
+
+          ### 📚 Client Libraries
+
+          **Rust**
+          \`\`\`bash
+          cargo add geniustechspace-core@$VERSION
+          \`\`\`
+
+          **Python**
+          \`\`\`bash
+          pip install geniustechspace-core==$VERSION
+          \`\`\`
+
+          **TypeScript**
+          \`\`\`bash
+          npm install @geniustechspace/core@$VERSION
+          \`\`\`
+
+          **Go**
+          \`\`\`bash
+          go get github.com/geniustechspace/api-contracts/clients/go/core@v$VERSION
+          \`\`\`
+
+          **Java**
+          \`\`\`xml
+          <dependency>
+            <groupId>com.geniustechspace</groupId>
+            <artifactId>api-contracts-core</artifactId>
+            <version>$VERSION</version>
+          </dependency>
+          \`\`\`
+
+          ---
+
+          📖 [Documentation](https://github.com/geniustechspace/api-contracts#readme)
+          🐛 [Report Issues](https://github.com/geniustechspace/api-contracts/issues)
+          EOF
+
+      - name: Create Release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: v${{ needs.prepare.outputs.version }}
+          name: Release v${{ needs.prepare.outputs.version }}
+          body_path: release_notes.md
+          draft: false
+          prerelease: ${{ needs.prepare.outputs.is_prerelease }}
+          generate_release_notes: true
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+  # ============================================================================
+  # Notify on Completion
+  # ============================================================================
+  notify:
+    name: Notify Release Status
+    runs-on: ubuntu-latest
+    needs: [create-release]
+    if: always()
+    steps:
+      - name: Release Success
+        if: needs.create-release.result == 'success'
+        run: |
+          echo "✅ Release v${{ needs.prepare.outputs.version }} published successfully!"
+          echo "📦 Packages are now available in registries"
+
+      - name: Release Failed
+        if: needs.create-release.result != 'success'
+        run: |
+          echo "❌ Release failed. Please check the logs."
+          exit 1

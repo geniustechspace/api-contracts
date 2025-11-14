@@ -20,11 +20,10 @@ import "validate/validate.proto";
 
 // Go: Backend services package
 option go_package = "github.com/geniustechspace/api-contracts/gen/go/core/v1;corev1";
-
-// Java: Enterprise integration package
-option java_package = "com.geniustechspace.api.core.v1";
 option java_multiple_files = true;
 option java_outer_classname = "HealthProto";
+// Java: Enterprise integration package
+option java_package = "com.geniustechspace.api.core.v1";
 
 // =============================================================================
 // Health Service

@@ -21,11 +21,10 @@ import "validate/validate.proto";
 
 // Go: Backend services package
 option go_package = "github.com/geniustechspace/api-contracts/gen/go/core/v1;corev1";
-
-// Java: Enterprise integration package
-option java_package = "com.geniustechspace.api.core.v1";
 option java_multiple_files = true;
 option java_outer_classname = "ContextProto";
+// Java: Enterprise integration package
+option java_package = "com.geniustechspace.api.core.v1";
 
 // =============================================================================
 // Request Context
@@ -37,7 +36,7 @@ message RequestContext {
   // Unique request identifier (UUID v4 recommended).
   // Used for request tracking, logging, and debugging.
   string request_id = 1 [(validate.rules).string = {
-    min_len: 1,
+    min_len: 1
     max_len: 64
   }];
 

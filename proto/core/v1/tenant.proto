@@ -35,11 +35,10 @@ import "validate/validate.proto";
 
 // Go: Backend services package
 option go_package = "github.com/geniustechspace/api-contracts/gen/go/core/v1;corev1";
-
-// Java: Enterprise integration package
-option java_package = "com.geniustechspace.api.core.v1";
 option java_multiple_files = true;
 option java_outer_classname = "TenantProto";
+// Java: Enterprise integration package
+option java_package = "com.geniustechspace.api.core.v1";
 
 // =============================================================================
 // Tenant Context - Required for ALL Requests
@@ -58,8 +57,8 @@ message TenantContext {
   // Format: UUID v4 recommended, or custom tenant ID format.
   // Example: "550e8400-e29b-41d4-a716-446655440000"
   string tenant_id = 1 [(validate.rules).string = {
-    min_len: 1,
-    max_len: 64,
+    min_len: 1
+    max_len: 64
     pattern: "^[a-zA-Z0-9_-]+$"
   }];
 
@@ -125,7 +124,7 @@ message TenantInfo {
 
   // Human-readable display name.
   string name = 2 [(validate.rules).string = {
-    min_len: 1,
+    min_len: 1
     max_len: 255
   }];
 
@@ -272,8 +271,8 @@ message ComplianceSettings {
   // Data retention policy in days.
   // After this period, data may be automatically deleted based on policy.
   int32 data_retention_days = 6 [(validate.rules).int32 = {
-    gte: 0,
-    lte: 3650  // Max 10 years
+    gte: 0
+    lte: 3650 // Max 10 years
   }];
 
   // Require encryption at rest for all tenant data.
@@ -318,8 +317,8 @@ message AuditSettings {
   // Audit log retention period in days.
   // Logs older than this are eligible for archival/deletion.
   int32 retention_days = 2 [(validate.rules).int32 = {
-    gte: 0,
-    lte: 3650  // Max 10 years
+    gte: 0
+    lte: 3650 // Max 10 years
   }];
 
   // Types of events to audit.

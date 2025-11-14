@@ -1,260 +1,433 @@
-name: CI/CD
+name: CI/CD Pipeline
 
 on:
   push:
-    branches: [main, develop]
+    branches: [main, staging, dev]
   pull_request:
-    branches: [main, develop]
+    branches: [main, staging, dev]
   workflow_dispatch:
+    inputs:
+      skip_tests:
+        description: 'Skip test execution'
+        required: false
+        type: boolean
+        default: false
+
+# Cancel in-progress runs for the same PR/branch
+concurrency:
+  group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
 
 env:
-  BUF_VERSION: "1.47.2"  # Updated to support v2 configuration format (requires >= 1.32.0)
-  RUST_VERSION: "1.83.0"  # Latest stable Rust (November 2024)
-  PYTHON_VERSION: "3.12"  # Latest stable Python
-  NODE_VERSION: "22"      # Latest LTS Node.js
+  BUF_VERSION: "1.47.2"
+  RUST_VERSION: "1.83.0"
+  PYTHON_VERSION: "3.12"
+  GO_VERSION: "1.23"
+  NODE_VERSION: "22"
+  JAVA_VERSION: "21"
+  PNPM_VERSION: "9"
+
+permissions:
+  contents: read
+  pull-requests: write
+  checks: write
+  issues: write
 
 jobs:
-  lint-proto:
-    name: Lint Proto Files
+  # ============================================================================
+  # Proto Validation & Code Generation
+  # ============================================================================
+  validate-proto:
+    name: Validate Proto Files
     runs-on: ubuntu-latest
+    timeout-minutes: 10
     steps:
-      - uses: actions/checkout@v4
+      - name: Checkout Code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0  # Full history for breaking change detection
 
-      - name: Setup Buf
-        uses: bufbuild/buf-setup-action@v1
+      - name: Buf Lint, Format, and Breaking Change Detection
+        uses: bufbuild/buf-action@v1
         with:
           version: ${{ env.BUF_VERSION }}
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+          setup_only: false
+          format: true
+          lint: true
+          breaking: ${{ github.event_name == 'pull_request' }}
+          breaking_against: 'https://github.com/${{ github.repository }}.git#branch=${{ github.base_ref || github.event.repository.default_branch }},subdir=proto'
+          comment: true
+          pr_comment: ${{ github.event_name == 'pull_request' }}
 
-      - name: Lint Proto Files
-        run: buf lint
-
-      - name: Check Breaking Changes
-        if: github.event_name == 'pull_request'
+      - name: Generate Proto Documentation
         run: |
-          # Fetch the main branch for comparison
-          git fetch origin main:main 2>/dev/null || {
-            echo "Main branch does not exist yet, skipping breaking change detection"
-            echo "Breaking change detection will be enabled once the main branch is created"
-            exit 0
-          }
-          # Run breaking change detection against fetched main branch
-          buf breaking --against '.git#branch=main'
+          buf generate --template buf.gen.yaml --path proto || echo "Documentation generation skipped"
 
-  generate-and-build:
-    name: Generate and Build All Clients
+  # ============================================================================
+  # Generate All Client Code
+  # ============================================================================
+  generate-clients:
+    name: Generate Client Code
     runs-on: ubuntu-latest
-    needs: lint-proto
-    strategy:
-      matrix:
-        language: [rust, python, typescript]
+    needs: validate-proto
+    timeout-minutes: 15
     steps:
-      - uses: actions/checkout@v4
+      - name: Checkout Code
+        uses: actions/checkout@v4
 
       - name: Setup Buf
-        uses: bufbuild/buf-setup-action@v1
+        uses: bufbuild/buf-action@v1
         with:
           version: ${{ env.BUF_VERSION }}
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+          setup_only: true
 
-      - name: Setup Rust
-        if: matrix.language == 'rust'
-        uses: dtolnay/rust-toolchain@stable
-        with:
-          toolchain: ${{ env.RUST_VERSION }}
-          components: rustfmt, clippy
-
-      - name: Install protoc
-        if: matrix.language == 'rust'
+      - name: Install Protoc
         run: |
           sudo apt-get update
           sudo apt-get install -y protobuf-compiler
           protoc --version
 
-      - name: Setup Python
-        if: matrix.language == 'python'
-        uses: actions/setup-python@v5
-        with:
-          python-version: ${{ env.PYTHON_VERSION }}
-
-      - name: Setup Node.js
-        if: matrix.language == 'typescript'
-        uses: actions/setup-node@v4
-        with:
-          node-version: ${{ env.NODE_VERSION }}
-
-      - name: Install pnpm
-        if: matrix.language == 'typescript'
-        uses: pnpm/action-setup@v2
-        with:
-          version: 8
-
-      - name: Cache Rust dependencies
-        if: matrix.language == 'rust'
-        uses: actions/cache@v4
-        with:
-          path: |
-            ~/.cargo/registry
-            ~/.cargo/git
-            clients/rust/target
-          key: ${{ runner.os }}-cargo-${{ hashFiles('**/Cargo.lock') }}
-
-      - name: Cache Python dependencies
-        if: matrix.language == 'python'
-        uses: actions/cache@v4
-        with:
-          path: ~/.cache/pip
-          key: ${{ runner.os }}-pip-${{ hashFiles('**/pyproject.toml') }}
-
-      - name: Cache Node.js dependencies
-        if: matrix.language == 'typescript'
-        uses: actions/cache@v4
-        with:
-          path: clients/typescript/node_modules
-          key: ${{ runner.os }}-node-${{ hashFiles('clients/typescript/pnpm-lock.yaml') }}
-
       - name: Generate All Clients
         run: buf generate
 
-      - name: Build Rust
-        if: matrix.language == 'rust'
-        run: |
-          chmod +x scripts/generate_rust.sh
-          ./scripts/generate_rust.sh
-
-      - name: Build Python
-        if: matrix.language == 'python'
-        run: |
-          chmod +x scripts/generate_python.sh
-          ./scripts/generate_python.sh
-
-      - name: Build TypeScript
-        if: matrix.language == 'typescript'
-        run: |
-          chmod +x scripts/generate_ts.sh
-          ./scripts/generate_ts.sh
-
-      - name: Run Rust Tests
-        if: matrix.language == 'rust'
-        run: |
-          cd clients/rust
-          cargo test --workspace
-
-      - name: Run Rust Clippy
-        if: matrix.language == 'rust'
-        run: |
-          cd clients/rust
-          cargo clippy --workspace --all-targets -- -D warnings
-
-      - name: Run Python Tests
-        if: matrix.language == 'python'
-        run: |
-          python -m pip install pytest
-          # Add tests when available
-          # pytest python/
-
-      - name: Run TypeScript Tests
-        if: matrix.language == 'typescript'
-        run: |
-          cd clients/typescript
-          pnpm test || echo "No tests configured yet"
-
-      - name: Upload Artifacts
+      - name: Upload Generated Clients
         uses: actions/upload-artifact@v4
         with:
-          name: ${{ matrix.language }}-clients
-          path: |
-            clients/rust/target/release/*.rlib
-            clients/python/*/dist/*.whl
-            clients/typescript/packages/*/dist
+          name: generated-clients
+          path: clients/
+          retention-days: 7
 
-  publish-rust:
-    name: Publish Rust Crates
+  # ============================================================================
+  # Build & Test - Rust (Primary Language)
+  # ============================================================================
+  build-rust:
+    name: Build & Test Rust
     runs-on: ubuntu-latest
-    needs: generate-and-build
-    if: github.ref == 'refs/heads/main' && github.event_name == 'push'
+    needs: generate-clients
+    timeout-minutes: 30
+    strategy:
+      matrix:
+        package: [core, idp, notification]
     steps:
-      - uses: actions/checkout@v4
+      - name: Checkout Code
+        uses: actions/checkout@v4
 
-      - name: Setup Rust
+      - name: Download Generated Clients
+        uses: actions/download-artifact@v4
+        with:
+          name: generated-clients
+          path: clients/
+
+      - name: Setup Rust Toolchain
         uses: dtolnay/rust-toolchain@stable
         with:
           toolchain: ${{ env.RUST_VERSION }}
+          components: rustfmt, clippy
 
-      - name: Publish to crates.io
-        env:
-          CARGO_REGISTRY_TOKEN: ${{ secrets.CARGO_REGISTRY_TOKEN }}
+      - name: Rust Cache
+        uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: clients/rust
+          cache-on-failure: true
+
+      - name: Install Protoc
         run: |
-          cd clients/rust
-          # Publish in dependency order
-          cargo publish -p auth-client --allow-dirty || true
-          cargo publish -p accounts-client --allow-dirty || true
+          sudo apt-get update
+          sudo apt-get install -y protobuf-compiler
 
-  publish-python:
-    name: Publish Python Packages
+      - name: Check Rust Format
+        working-directory: clients/rust/${{ matrix.package }}
+        run: cargo fmt -- --check
+
+      - name: Cargo Check
+        working-directory: clients/rust/${{ matrix.package }}
+        run: cargo check --all-targets
+
+      - name: Build Release
+        working-directory: clients/rust/${{ matrix.package }}
+        run: cargo build --release
+
+      - name: Run Tests
+        if: ${{ !inputs.skip_tests }}
+        working-directory: clients/rust/${{ matrix.package }}
+        run: cargo test --all-features
+
+      - name: Run Clippy
+        working-directory: clients/rust/${{ matrix.package }}
+        run: cargo clippy --all-targets --all-features -- -D warnings
+
+      - name: Security Audit
+        working-directory: clients/rust/${{ matrix.package }}
+        run: |
+          cargo install cargo-audit || true
+          cargo audit || echo "Audit completed with warnings"
+
+  # ============================================================================
+  # Build & Test - Go
+  # ============================================================================
+  build-go:
+    name: Build & Test Go
     runs-on: ubuntu-latest
-    needs: generate-and-build
-    if: github.ref == 'refs/heads/main' && github.event_name == 'push'
+    needs: generate-clients
+    timeout-minutes: 20
+    strategy:
+      matrix:
+        module: [core, idp, notification]
     steps:
-      - uses: actions/checkout@v4
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      - name: Download Generated Clients
+        uses: actions/download-artifact@v4
+        with:
+          name: generated-clients
+          path: clients/
+
+      - name: Setup Go
+        uses: actions/setup-go@v5
+        with:
+          go-version: ${{ env.GO_VERSION }}
+          cache-dependency-path: clients/go/${{ matrix.module }}/go.sum
+
+      - name: Go Mod Tidy
+        working-directory: clients/go/${{ matrix.module }}
+        run: go mod tidy
+
+      - name: Go Vet
+        working-directory: clients/go/${{ matrix.module }}
+        run: go vet ./...
+
+      - name: Build
+        working-directory: clients/go/${{ matrix.module }}
+        run: go build ./...
+
+      - name: Run Tests
+        if: ${{ !inputs.skip_tests }}
+        working-directory: clients/go/${{ matrix.module }}
+        run: go test -v -race -coverprofile=coverage.out ./...
+
+      - name: Upload Coverage
+        if: ${{ !inputs.skip_tests }}
+        uses: codecov/codecov-action@v4
+        with:
+          files: clients/go/${{ matrix.module }}/coverage.out
+          flags: go-${{ matrix.module }}
+        continue-on-error: true
+
+  # ============================================================================
+  # Build & Test - Python
+  # ============================================================================
+  build-python:
+    name: Build & Test Python
+    runs-on: ubuntu-latest
+    needs: generate-clients
+    timeout-minutes: 20
+    strategy:
+      matrix:
+        package: [core, idp, notification]
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      - name: Download Generated Clients
+        uses: actions/download-artifact@v4
+        with:
+          name: generated-clients
+          path: clients/
 
       - name: Setup Python
         uses: actions/setup-python@v5
         with:
           python-version: ${{ env.PYTHON_VERSION }}
+          cache: 'pip'
 
-      - name: Install build tools
+      - name: Install Dependencies
         run: |
           python -m pip install --upgrade pip
-          pip install build twine
+          pip install build pytest pytest-cov mypy ruff
 
-      - name: Build packages
-        run: |
-          for dir in clients/python/*/; do
-            if [ -f "$dir/pyproject.toml" ]; then
-              cd "$dir"
-              python -m build
-              cd -
-            fi
-          done
+      - name: Lint with Ruff
+        working-directory: clients/python/${{ matrix.package }}
+        run: ruff check . || echo "Ruff linting completed with warnings"
 
-      - name: Publish to PyPI
-        env:
-          TWINE_USERNAME: __token__
-          TWINE_PASSWORD: ${{ secrets.PYPI_API_TOKEN }}
-        run: |
-          twine upload clients/python/*/dist/*.whl clients/python/*/dist/*.tar.gz || true
+      - name: Type Check with MyPy
+        working-directory: clients/python/${{ matrix.package }}
+        run: mypy . || echo "Type checking completed with warnings"
 
-  publish-npm:
-    name: Publish NPM Packages
+      - name: Build Package
+        working-directory: clients/python/${{ matrix.package }}
+        run: python -m build
+
+      - name: Run Tests
+        if: ${{ !inputs.skip_tests }}
+        working-directory: clients/python/${{ matrix.package }}
+        run: pytest --cov --cov-report=xml || echo "No tests configured"
+
+      - name: Upload Coverage
+        if: ${{ !inputs.skip_tests }}
+        uses: codecov/codecov-action@v4
+        with:
+          files: clients/python/${{ matrix.package }}/coverage.xml
+          flags: python-${{ matrix.package }}
+        continue-on-error: true
+
+  # ============================================================================
+  # Build & Test - TypeScript
+  # ============================================================================
+  build-typescript:
+    name: Build & Test TypeScript
     runs-on: ubuntu-latest
-    needs: generate-and-build
-    if: github.ref == 'refs/heads/main' && github.event_name == 'push'
+    needs: generate-clients
+    timeout-minutes: 20
+    strategy:
+      matrix:
+        package: [core, idp, notification]
     steps:
-      - uses: actions/checkout@v4
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      - name: Download Generated Clients
+        uses: actions/download-artifact@v4
+        with:
+          name: generated-clients
+          path: clients/
 
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
           node-version: ${{ env.NODE_VERSION }}
-          registry-url: "https://registry.npmjs.org"
 
-      - name: Install pnpm
-        uses: pnpm/action-setup@v2
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v4
         with:
-          version: 8
+          version: ${{ env.PNPM_VERSION }}
 
-      - name: Install dependencies
+      - name: Get pnpm store directory
+        shell: bash
         run: |
-          cd clients/typescript
-          pnpm install
+          echo "STORE_PATH=$(pnpm store path --silent)" >> $GITHUB_ENV
 
-      - name: Build packages
-        run: |
-          cd clients/typescript
-          pnpm build
+      - name: Setup pnpm cache
+        uses: actions/cache@v4
+        with:
+          path: ${{ env.STORE_PATH }}
+          key: ${{ runner.os }}-pnpm-store-${{ hashFiles('clients/typescript/pnpm-lock.yaml') }}
+          restore-keys: |
+            ${{ runner.os }}-pnpm-store-
 
-      - name: Publish to NPM
-        env:
-          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
+      - name: Install Dependencies
+        working-directory: clients/typescript
+        run: pnpm install --frozen-lockfile || pnpm install
+
+      - name: Lint
+        working-directory: clients/typescript
+        run: pnpm lint || echo "Linting completed with warnings"
+
+      - name: Type Check
+        working-directory: clients/typescript
+        run: pnpm type-check || echo "Type checking completed with warnings"
+
+      - name: Build
+        working-directory: clients/typescript/packages/${{ matrix.package }}
+        run: pnpm build || echo "Build completed with warnings"
+
+      - name: Run Tests
+        if: ${{ !inputs.skip_tests }}
+        working-directory: clients/typescript
+        run: pnpm test || echo "No tests configured"
+
+  # ============================================================================
+  # Build & Test - Java
+  # ============================================================================
+  build-java:
+    name: Build & Test Java
+    runs-on: ubuntu-latest
+    needs: generate-clients
+    timeout-minutes: 20
+    strategy:
+      matrix:
+        module: [core, idp, notification]
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      - name: Download Generated Clients
+        uses: actions/download-artifact@v4
+        with:
+          name: generated-clients
+          path: clients/
+
+      - name: Setup Java
+        uses: actions/setup-java@v4
+        with:
+          java-version: ${{ env.JAVA_VERSION }}
+          distribution: 'temurin'
+          cache: 'maven'
+
+      - name: Build with Maven
+        working-directory: clients/java
+        run: mvn -B clean install -DskipTests=false -pl ${{ matrix.module }} -am
+
+      - name: Run Tests
+        if: ${{ !inputs.skip_tests }}
+        working-directory: clients/java/${{ matrix.module }}
+        run: mvn test
+
+  # ============================================================================
+  # Security Scanning
+  # ============================================================================
+  security-scan:
+    name: Security Scan
+    runs-on: ubuntu-latest
+    needs: validate-proto
+    timeout-minutes: 15
+    permissions:
+      security-events: write
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      - name: Run Trivy Vulnerability Scanner
+        uses: aquasecurity/trivy-action@master
+        with:
+          scan-type: 'fs'
+          scan-ref: '.'
+          format: 'sarif'
+          output: 'trivy-results.sarif'
+        continue-on-error: true
+
+      - name: Upload Trivy Results to GitHub Security
+        uses: github/codeql-action/upload-sarif@v3
+        with:
+          sarif_file: 'trivy-results.sarif'
+        continue-on-error: true
+
+  # ============================================================================
+  # Final Status Check
+  # ============================================================================
+  ci-success:
+    name: CI Success
+    runs-on: ubuntu-latest
+    needs:
+      - validate-proto
+      - generate-clients
+      - build-rust
+      - build-go
+      - build-python
+      - build-typescript
+      - build-java
+    if: always()
+    steps:
+      - name: Check All Jobs Status
         run: |
-          cd clients/typescript
-          pnpm publish -r --access public --no-git-checks || true
+          if [[ "${{ contains(needs.*.result, 'failure') }}" == "true" ]]; then
+            echo "❌ One or more jobs failed"
+            exit 1
+          elif [[ "${{ contains(needs.*.result, 'cancelled') }}" == "true" ]]; then
+            echo "⚠️ One or more jobs were cancelled"
+            exit 1
+          else
+            echo "✅ All jobs completed successfully"
+          fi

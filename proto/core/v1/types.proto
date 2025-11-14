@@ -14,11 +14,10 @@ import "validate/validate.proto";
 
 // Go: Backend services package
 option go_package = "github.com/geniustechspace/api-contracts/gen/go/core/v1;corev1";
-
-// Java: Enterprise integration package
-option java_package = "com.geniustechspace.api.core.v1";
 option java_multiple_files = true;
 option java_outer_classname = "TypesProto";
+// Java: Enterprise integration package
+option java_package = "com.geniustechspace.api.core.v1";
 
 // =============================================================================
 // Contact Information
@@ -120,13 +119,13 @@ message Address {
 
   // Latitude (for geocoding).
   double latitude = 10 [(validate.rules).double = {
-    gte: -90,
+    gte: -90
     lte: 90
   }];
 
   // Longitude (for geocoding).
   double longitude = 11 [(validate.rules).double = {
-    gte: -180,
+    gte: -180
     lte: 180
   }];
 }
