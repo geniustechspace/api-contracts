@@ -26,6 +26,17 @@ The API Contracts repository uses a comprehensive CI/CD pipeline with the follow
 | **Security & Dependency Scanning** | Push, Schedule (daily)   | Security vulnerability scanning | ~30 min  |
 | **Dependency Updates**             | Schedule (weekly)        | Automated dependency updates    | ~10 min  |
 
+### Current Modules
+
+The repository currently contains the following proto modules:
+
+| Module | Status | Proto Files | Description |
+|--------|--------|-------------|-------------|
+| **core** | ✅ Active | 8 files | Core multitenancy, context, errors, pagination, tenant management, audit logging |
+| **idp** | 🚧 Planned | 0 files | Identity provider services (authentication, user management, RBAC) - skeleton only |
+
+**Note**: Workflows build and test both `core` and `idp` modules. The `idp` module contains placeholder/skeleton code for future development.
+
 ## Workflow Descriptions
 
 ### 1. CI/CD Pipeline (`ci.yml`)
@@ -42,13 +53,15 @@ The API Contracts repository uses a comprehensive CI/CD pipeline with the follow
 
 1. **validate-proto**: Validates proto files with Buf (format, lint, breaking changes)
 2. **generate-clients**: Generates client code for all languages
-3. **build-rust**: Builds and tests Rust clients (primary language)
-4. **build-go**: Builds and tests Go clients
-5. **build-python**: Builds and tests Python clients
-6. **build-typescript**: Builds and tests TypeScript clients
-7. **build-java**: Builds and tests Java clients
+3. **build-rust**: Builds and tests Rust clients for `core` and `idp` modules (primary language)
+4. **build-go**: Builds and tests Go clients for `core` and `idp` modules
+5. **build-python**: Builds and tests Python clients for `core` and `idp` modules
+6. **build-typescript**: Builds and tests TypeScript clients for `core` and `idp` modules
+7. **build-java**: Builds and tests Java clients for `core` and `idp` modules
 8. **security-scan**: Runs Trivy vulnerability scanner
 9. **ci-success**: Final status check
+
+> **Note**: Jobs 3-7 use matrix strategies to build multiple modules in parallel. Currently builds `core` (with proto files) and `idp` (skeleton/placeholder code).
 
 **Features**:
 
