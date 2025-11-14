@@ -17,7 +17,6 @@
     <modules>
         <module>core</module>
         <module>idp</module>
-        <module>notification</module>
     </modules>
 
     <properties>

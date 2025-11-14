@@ -7,7 +7,6 @@
     "packages/validate",
     "packages/core",
     "packages/idp",
-    "packages/notification",
     "packages/google"
   ],
   "scripts": {

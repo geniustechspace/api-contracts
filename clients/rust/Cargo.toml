@@ -1,7 +1,7 @@
 # =============================================================================
 # Rust Workspace Configuration
 # =============================================================================
-# Each proto module (core, idp, notification, etc.) is a separate crate
+# Each proto module (core, idp, etc.) is a separate crate
 # that can be published and installed independently.
 #
 # Usage:
@@ -15,7 +15,6 @@ resolver = "2"
 members = [
     "core",
     "idp",
-    "notification",
 ]
 
 # Shared dependencies across all workspace members
