@@ -254,8 +254,16 @@ jobs:
 
           ## Proto Services
 
-          - [Core Services](proto/markdown/core.md) - Multitenancy, context, errors
-          - [IDP Services](proto/markdown/idp.md) - Identity and authentication
+          EOF
+          
+          # Dynamically generate Proto Services section
+          readarray -t PROTO_MODULES < <(find proto -mindepth 1 -maxdepth 1 -type d -exec basename {} \; | sort)
+          for module in "${PROTO_MODULES[@]}"; do
+            MODULE_DISPLAY=$(echo "$module" | sed 's/^./\U&/')
+            echo "- [${MODULE_DISPLAY} Services](proto/markdown/${module}.md)" >> docs/generated/index.md
+          done
+          
+          cat >> docs/generated/index.md << 'EOF'
 
           ## Client Libraries
 

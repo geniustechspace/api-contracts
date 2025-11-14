@@ -32,7 +32,7 @@ cd "$ROOT_DIR"
 
 # Cleanup function for temp files
 cleanup_temp_files() {
-    rm -f "$RUST_TEMP" "$JAVA_TEMP" 2>/dev/null
+    rm -f "${RUST_TEMP:-}" "${JAVA_TEMP:-}" 2>/dev/null
 }
 trap cleanup_temp_files EXIT
 
