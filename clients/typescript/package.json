@@ -5,9 +5,9 @@
   "description": "TypeScript/JavaScript clients for GeniusTechSpace API contracts",
   "workspaces": [
     "packages/validate",
+    "packages/google",
     "packages/core",
-    "packages/idp",
-    "packages/google"
+    "packages/idp"
   ],
   "scripts": {
     "build": "npm run build --workspaces",

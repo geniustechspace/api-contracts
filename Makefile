@@ -26,6 +26,7 @@ help: ## Show this help message
 	@echo "  make deps           - Download proto dependencies"
 	@echo "  make update-deps    - Update proto dependencies"
 	@echo "  make add-service    - Interactive tool to add a new service package"
+	@echo "  make sync-workspaces - Sync workspace configs with discovered modules"
 	@echo ""
 	@echo "🔨 Generation:"
 	@echo "  make generate       - Generate all clients (rust, go, python, typescript, java)"
@@ -107,6 +108,15 @@ add-service: ## Interactive tool to add a new service package
 		./scripts/add_service.sh; \
 	else \
 		echo "⚠️  add_service.sh script not found"; \
+		exit 1; \
+	fi
+
+sync-workspaces: ## Synchronize workspace configurations with discovered modules
+	@echo "🔄 Synchronizing workspace configurations..."
+	@if [ -f scripts/sync_workspaces.sh ]; then \
+		./scripts/sync_workspaces.sh; \
+	else \
+		echo "⚠️  sync_workspaces.sh script not found"; \
 		exit 1; \
 	fi
 

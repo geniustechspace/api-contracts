@@ -267,6 +267,16 @@ main() {
     echo ""
     print_success "Service package '$SERVICE_NAME' created successfully!"
     echo ""
+    
+    # Automatically sync workspace configurations
+    print_info "Synchronizing workspace configurations..."
+    if [ -f "$SCRIPT_DIR/sync_workspaces.sh" ]; then
+        bash "$SCRIPT_DIR/sync_workspaces.sh"
+    else
+        print_warning "sync_workspaces.sh not found - run 'make sync-workspaces' manually"
+    fi
+    echo ""
+    
     print_info "Next steps:"
     echo "  1. Review and customize the generated proto files:"
     echo "     - $readme_output"
@@ -281,8 +291,8 @@ main() {
     echo "  4. Validate structure:"
     echo "     make validate-structure"
     echo ""
-    print_info "The service will be automatically discovered by all scripts."
-    print_info "No manual configuration needed!"
+    print_info "The service will be automatically discovered by all scripts and workflows."
+    print_info "Workspace configurations have been synchronized!"
     echo ""
 }
 

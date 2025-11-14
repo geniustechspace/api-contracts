@@ -139,7 +139,18 @@ jobs:
 
       - name: Create MkDocs Configuration
         run: |
-          cat > mkdocs.yml << 'EOF'
+          # Discover proto modules dynamically
+          PROTO_MODULES=$(find proto -mindepth 1 -maxdepth 1 -type d -exec basename {} \; | sort)
+          
+          # Build Proto Reference section dynamically
+          PROTO_NAV=""
+          for module in $PROTO_MODULES; do
+            # Capitalize first letter for display
+            MODULE_DISPLAY=$(echo "$module" | sed 's/^./\U&/')
+            PROTO_NAV="${PROTO_NAV}              - ${MODULE_DISPLAY}: docs/generated/proto/markdown/${module}.md"$'\n'
+          done
+          
+          cat > mkdocs.yml << EOF
           site_name: GeniusTechSpace API Contracts
           site_description: Enterprise-grade gRPC API contracts with multi-language client generation
           site_author: GeniusTechSpace
@@ -192,9 +203,7 @@ jobs:
               - SOC 2: docs/compliance/soc2.md
               - PCI DSS: docs/compliance/pci-dss.md
             - Proto Reference:
-              - Core: docs/generated/proto/markdown/core.md
-              - IDP: docs/generated/proto/markdown/idp.md
-
+          ${PROTO_NAV}
           markdown_extensions:
             - pymdownx.highlight:
                 anchor_linenums: true
