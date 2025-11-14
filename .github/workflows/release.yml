@@ -258,13 +258,11 @@ jobs:
           echo "### Java" >> RELEASE_NOTES.md
           echo '```xml' >> RELEASE_NOTES.md
           for module in $MODULES; do
-            cat >> RELEASE_NOTES.md << JAVAXML
-          <dependency>
-            <groupId>com.geniustechspace</groupId>
-            <artifactId>api-contracts-${module}</artifactId>
-            <version>$VERSION</version>
-          </dependency>
-          JAVAXML
+            echo "<dependency>" >> RELEASE_NOTES.md
+            echo "  <groupId>com.geniustechspace</groupId>" >> RELEASE_NOTES.md
+            echo "  <artifactId>api-contracts-${module}</artifactId>" >> RELEASE_NOTES.md
+            echo "  <version>$VERSION</version>" >> RELEASE_NOTES.md
+            echo "</dependency>" >> RELEASE_NOTES.md
           done
           echo '```' >> RELEASE_NOTES.md
           echo "" >> RELEASE_NOTES.md

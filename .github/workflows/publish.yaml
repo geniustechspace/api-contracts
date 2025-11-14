@@ -79,7 +79,7 @@ jobs:
           echo "🔍 Detecting changed packages..."
 
           # Discover all proto modules dynamically
-          ALL_MODULES=$(find proto -mindepth 1 -maxdepth 1 -type d -exec basename {} \; | sort | tr '\n' ' ' | sed 's/ $//')
+          ALL_MODULES=$(find proto -mindepth 1 -maxdepth 1 -type d -exec basename {} \; | sort | xargs)
           echo "Discovered modules: $ALL_MODULES"
 
           # Get the previous tag

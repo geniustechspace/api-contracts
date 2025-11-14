@@ -58,7 +58,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        language: [rust, python, javascript]
+        language: [rust, python, javascript, go]
     steps:
       - name: Checkout Code
         uses: actions/checkout@v4

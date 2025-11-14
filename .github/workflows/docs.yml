@@ -139,19 +139,21 @@ jobs:
 
       - name: Create MkDocs Configuration
         run: |
-          # Discover proto modules dynamically
-          PROTO_MODULES=$(find proto -mindepth 1 -maxdepth 1 -type d -exec basename {} \; | sort)
+          # Discover proto modules dynamically and sort them
+          readarray -t PROTO_MODULES < <(find proto -mindepth 1 -maxdepth 1 -type d -exec basename {} \; | sort)
           
           # Build Proto Reference section dynamically
           PROTO_NAV=""
-          for module in $PROTO_MODULES; do
+          MODULE_COUNT=0
+          for module in "${PROTO_MODULES[@]}"; do
             # Capitalize first letter for display
             MODULE_DISPLAY=$(echo "$module" | sed 's/^./\U&/')
             PROTO_NAV="${PROTO_NAV}              - ${MODULE_DISPLAY}: docs/generated/proto/markdown/${module}.md"$'\n'
+            MODULE_COUNT=$((MODULE_COUNT + 1))
           done
           
           # Validate that we found modules
-          if [ -z "$PROTO_NAV" ]; then
+          if [ $MODULE_COUNT -eq 0 ]; then
             echo "Warning: No proto modules found for navigation"
             PROTO_NAV="              - No modules: docs/README.md"$'\n'
           fi

@@ -13,6 +13,11 @@
 # Usage:
 #   ./scripts/sync_workspaces.sh
 #   make sync-workspaces
+#
+# Exit codes:
+#   0 - Changes were made to workspace configurations
+#   1 - No changes needed (already up to date)
+#   2 - Error occurred during synchronization
 # =============================================================================
 
 set -e
@@ -25,6 +30,12 @@ check_windows_compatibility || exit 1
 ROOT_DIR=$(get_root_dir)
 cd "$ROOT_DIR"
 
+# Cleanup function for temp files
+cleanup_temp_files() {
+    rm -f "$RUST_TEMP" "$JAVA_TEMP" 2>/dev/null
+}
+trap cleanup_temp_files EXIT
+
 print_section "Synchronizing Workspace Configurations"
 
 # Discover proto modules
@@ -32,7 +43,7 @@ PROTO_MODULES=($(discover_proto_modules "$ROOT_DIR"))
 
 if [ ${#PROTO_MODULES[@]} -eq 0 ]; then
     print_error "No proto modules found in proto/ directory"
-    exit 1
+    exit 2
 fi
 
 print_info "Discovered modules: ${PROTO_MODULES[*]}"
@@ -48,8 +59,7 @@ print_info "Updating Rust workspace (Cargo.toml)..."
 RUST_CARGO="$ROOT_DIR/clients/rust/Cargo.toml"
 if [ -f "$RUST_CARGO" ]; then
     # Create temporary file with updated members
-    TEMP_FILE=$(mktemp)
-    trap 'rm -f "$TEMP_FILE"' EXIT
+    RUST_TEMP=$(mktemp)
     
     # Read the file and replace the members array
     awk -v modules="${PROTO_MODULES[*]}" '
@@ -70,14 +80,13 @@ if [ -f "$RUST_CARGO" ]; then
     }
     /^\[/ && in_members && printed_members { in_members = 0 }
     { print }
-    ' "$RUST_CARGO" > "$TEMP_FILE"
+    ' "$RUST_CARGO" > "$RUST_TEMP"
     
-    if ! diff -q "$RUST_CARGO" "$TEMP_FILE" > /dev/null 2>&1; then
-        mv "$TEMP_FILE" "$RUST_CARGO"
+    if ! diff -q "$RUST_CARGO" "$RUST_TEMP" > /dev/null 2>&1; then
+        mv "$RUST_TEMP" "$RUST_CARGO"
         print_success "Rust workspace updated"
         CHANGES_MADE=true
     else
-        rm "$TEMP_FILE"
         print_info "Rust workspace already up to date"
     fi
 else
@@ -94,8 +103,7 @@ print_info "Updating Java modules (pom.xml)..."
 JAVA_POM="$ROOT_DIR/clients/java/pom.xml"
 if [ -f "$JAVA_POM" ]; then
     # Create temporary file with updated modules
-    TEMP_FILE=$(mktemp)
-    trap 'rm -f "$TEMP_FILE"' EXIT
+    JAVA_TEMP=$(mktemp)
     
     # Read the file and replace the modules section
     awk -v modules="${PROTO_MODULES[*]}" '
@@ -112,14 +120,13 @@ if [ -f "$JAVA_POM" ]; then
         next
     }
     { print }
-    ' "$JAVA_POM" > "$TEMP_FILE"
+    ' "$JAVA_POM" > "$JAVA_TEMP"
     
-    if ! diff -q "$JAVA_POM" "$TEMP_FILE" > /dev/null 2>&1; then
-        mv "$TEMP_FILE" "$JAVA_POM"
+    if ! diff -q "$JAVA_POM" "$JAVA_TEMP" > /dev/null 2>&1; then
+        mv "$JAVA_TEMP" "$JAVA_POM"
         print_success "Java modules updated"
         CHANGES_MADE=true
     else
-        rm "$TEMP_FILE"
         print_info "Java modules already up to date"
     fi
 else
@@ -136,14 +143,18 @@ print_info "Updating TypeScript workspaces (package.json)..."
 TS_PACKAGE="$ROOT_DIR/clients/typescript/package.json"
 if [ -f "$TS_PACKAGE" ]; then
     # Use Python to update JSON (more reliable than awk for JSON)
-    python3 << PYTHON_SCRIPT
+    export PROTO_MODULES_STR="${PROTO_MODULES[*]}"
+    export TS_PACKAGE_PATH="$TS_PACKAGE"
+    python3 << 'PYTHON_SCRIPT'
 import json
 import sys
+import os
 
 try:
-    modules = "${PROTO_MODULES[*]}".split()
+    modules = os.environ.get("PROTO_MODULES_STR", "").split()
+    ts_package = os.environ.get("TS_PACKAGE_PATH", "")
     
-    with open("$TS_PACKAGE", "r") as f:
+    with open(ts_package, "r") as f:
         data = json.load(f)
     
     # Update workspaces array, keeping special packages
@@ -160,7 +171,7 @@ try:
     
     if data.get("workspaces") != unique_workspaces:
         data["workspaces"] = unique_workspaces
-        with open("$TS_PACKAGE", "w") as f:
+        with open(ts_package, "w") as f:
             json.dump(data, f, indent=2)
             f.write("\n")
         sys.exit(0)  # Changed
@@ -179,6 +190,7 @@ PYTHON_SCRIPT
         print_info "TypeScript workspaces already up to date"
     else
         print_error "Failed to update TypeScript workspaces"
+        exit 2
     fi
 else
     print_warning "TypeScript package.json not found"
@@ -196,6 +208,8 @@ if [ "$CHANGES_MADE" = true ]; then
     print_info "Modules synchronized: ${PROTO_MODULES[*]}"
     echo ""
     print_warning "Run 'git diff' to review changes before committing"
+    exit 0  # Changed
 else
     print_success "All workspace configurations are already up to date"
+    exit 1  # Unchanged
 fi

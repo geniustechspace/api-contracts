@@ -154,14 +154,14 @@ mkdir -p clients/java/notification
 Then update workspace configs:
 
 ```bash
-# Run the automatic workspace sync (recommended)
+# Recommended: Use automatic workspace sync
 make sync-workspaces
-
-# Or manually update if needed:
-# Rust: clients/rust/Cargo.toml - Add "notification" to members array
-# Java: clients/java/pom.xml - Add <module>notification</module> to modules
-# TypeScript: clients/typescript/package.json - Add "packages/notification" to workspaces array
 ```
+
+**Note**: The sync script automatically updates all workspace configurations. Manual updates are rarely needed, but if required, you can edit:
+- Rust: `clients/rust/Cargo.toml` – Add module to members array
+- Java: `clients/java/pom.xml` – Add `<module>notification</module>` to modules
+- TypeScript: `clients/typescript/package.json` – Add `"packages/notification"` to workspaces array
 
 ## 🛠️ Local Development Commands
 
