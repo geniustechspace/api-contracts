@@ -21,7 +21,7 @@ concurrency:
   cancel-in-progress: true
 
 env:
-  RUST_VERSION: "1.83.0"
+  RUST_VERSION: "stable"
   PYTHON_VERSION: "3.12"
   GO_VERSION: "1.23"
   NODE_VERSION: "22"
