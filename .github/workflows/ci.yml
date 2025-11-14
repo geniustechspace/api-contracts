@@ -20,7 +20,7 @@ concurrency:
 
 env:
   BUF_VERSION: "1.47.2"
-  RUST_VERSION: "1.83.0"
+  RUST_VERSION: "stable"
   PYTHON_VERSION: "3.12"
   GO_VERSION: "1.23"
   NODE_VERSION: "22"
@@ -142,6 +142,13 @@ jobs:
           name: generated-clients
           path: clients/
 
+      - name: Setup Buf
+        uses: bufbuild/buf-action@v1
+        with:
+          version: ${{ env.BUF_VERSION }}
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+          setup_only: true
+
       - name: Setup Rust Toolchain
         uses: dtolnay/rust-toolchain@stable
         with:
@@ -183,7 +190,8 @@ jobs:
       - name: Security Audit
         working-directory: clients/rust/${{ matrix.package }}
         run: |
-          cargo install cargo-audit || true
+          # Install cargo-audit with fallback to older version if needed
+          cargo install cargo-audit --version 0.21.2 || cargo install cargo-audit || true
           cargo audit || echo "Audit completed with warnings"
 
   # ============================================================================
