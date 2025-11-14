@@ -271,7 +271,12 @@ main() {
     # Automatically sync workspace configurations
     print_info "Synchronizing workspace configurations..."
     if [ -f "$SCRIPT_DIR/sync_workspaces.sh" ]; then
-        bash "$SCRIPT_DIR/sync_workspaces.sh"
+        if bash "$SCRIPT_DIR/sync_workspaces.sh"; then
+            print_success "Workspace configurations synchronized"
+        else
+            print_error "Failed to sync workspace configurations"
+            print_warning "You may need to run 'make sync-workspaces' manually"
+        fi
     else
         print_warning "sync_workspaces.sh not found - run 'make sync-workspaces' manually"
     fi

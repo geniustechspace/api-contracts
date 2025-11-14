@@ -49,6 +49,7 @@ RUST_CARGO="$ROOT_DIR/clients/rust/Cargo.toml"
 if [ -f "$RUST_CARGO" ]; then
     # Create temporary file with updated members
     TEMP_FILE=$(mktemp)
+    trap 'rm -f "$TEMP_FILE"' EXIT
     
     # Read the file and replace the members array
     awk -v modules="${PROTO_MODULES[*]}" '
@@ -57,7 +58,8 @@ if [ -f "$RUST_CARGO" ]; then
     /^members = \[/ && in_members {
         print "members = ["
         split(modules, arr, " ")
-        for (i in arr) {
+        n = length(arr)
+        for (i = 1; i <= n; i++) {
             printf "    \"%s\",\n", arr[i]
         }
         print "]"
@@ -93,13 +95,15 @@ JAVA_POM="$ROOT_DIR/clients/java/pom.xml"
 if [ -f "$JAVA_POM" ]; then
     # Create temporary file with updated modules
     TEMP_FILE=$(mktemp)
+    trap 'rm -f "$TEMP_FILE"' EXIT
     
     # Read the file and replace the modules section
     awk -v modules="${PROTO_MODULES[*]}" '
     /<modules>/ {
         print "    <modules>"
         split(modules, arr, " ")
-        for (i in arr) {
+        n = length(arr)
+        for (i = 1; i <= n; i++) {
             printf "        <module>%s</module>\n", arr[i]
         }
         print "    </modules>"
@@ -136,38 +140,45 @@ if [ -f "$TS_PACKAGE" ]; then
 import json
 import sys
 
-modules = "${PROTO_MODULES[*]}".split()
-
-with open("$TS_PACKAGE", "r") as f:
-    data = json.load(f)
-
-# Update workspaces array, keeping special packages
-special_packages = ["packages/validate", "packages/google"]
-new_workspaces = special_packages + [f"packages/{m}" for m in modules]
-
-# Remove duplicates while preserving order
-seen = set()
-unique_workspaces = []
-for ws in new_workspaces:
-    if ws not in seen:
-        seen.add(ws)
-        unique_workspaces.append(ws)
-
-if data.get("workspaces") != unique_workspaces:
-    data["workspaces"] = unique_workspaces
-    with open("$TS_PACKAGE", "w") as f:
-        json.dump(data, f, indent=2)
-        f.write("\n")
-    sys.exit(0)  # Changed
-else:
-    sys.exit(1)  # Not changed
+try:
+    modules = "${PROTO_MODULES[*]}".split()
+    
+    with open("$TS_PACKAGE", "r") as f:
+        data = json.load(f)
+    
+    # Update workspaces array, keeping special packages
+    special_packages = ["packages/validate", "packages/google"]
+    new_workspaces = special_packages + [f"packages/{m}" for m in modules]
+    
+    # Remove duplicates while preserving order
+    seen = set()
+    unique_workspaces = []
+    for ws in new_workspaces:
+        if ws not in seen:
+            seen.add(ws)
+            unique_workspaces.append(ws)
+    
+    if data.get("workspaces") != unique_workspaces:
+        data["workspaces"] = unique_workspaces
+        with open("$TS_PACKAGE", "w") as f:
+            json.dump(data, f, indent=2)
+            f.write("\n")
+        sys.exit(0)  # Changed
+    else:
+        sys.exit(1)  # Not changed
+except (FileNotFoundError, json.JSONDecodeError, KeyError) as e:
+    print(f"Error: {e}", file=sys.stderr)
+    sys.exit(2)  # Error
 PYTHON_SCRIPT
     
-    if [ $? -eq 0 ]; then
+    exit_code=$?
+    if [ $exit_code -eq 0 ]; then
         print_success "TypeScript workspaces updated"
         CHANGES_MADE=true
-    else
+    elif [ $exit_code -eq 1 ]; then
         print_info "TypeScript workspaces already up to date"
+    else
+        print_error "Failed to update TypeScript workspaces"
     fi
 else
     print_warning "TypeScript package.json not found"

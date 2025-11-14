@@ -150,6 +150,12 @@ jobs:
             PROTO_NAV="${PROTO_NAV}              - ${MODULE_DISPLAY}: docs/generated/proto/markdown/${module}.md"$'\n'
           done
           
+          # Validate that we found modules
+          if [ -z "$PROTO_NAV" ]; then
+            echo "Warning: No proto modules found for navigation"
+            PROTO_NAV="              - No modules: docs/README.md"$'\n'
+          fi
+          
           cat > mkdocs.yml << EOF
           site_name: GeniusTechSpace API Contracts
           site_description: Enterprise-grade gRPC API contracts with multi-language client generation
