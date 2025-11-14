@@ -190,8 +190,11 @@ jobs:
       - name: Security Audit
         working-directory: clients/rust/${{ matrix.package }}
         run: |
-          # Install cargo-audit with fallback to older version if needed
-          cargo install cargo-audit --version 0.21.2 || cargo install cargo-audit || true
+          # Install cargo-audit (use 0.21.2 for compatibility with Rust 1.81+)
+          if ! cargo install cargo-audit --version 0.21.2 2>/dev/null; then
+            echo "Failed to install cargo-audit 0.21.2, trying latest..."
+            cargo install cargo-audit || echo "cargo-audit installation failed"
+          fi
           cargo audit || echo "Audit completed with warnings"
 
   # ============================================================================
