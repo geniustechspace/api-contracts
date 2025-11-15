@@ -209,60 +209,64 @@ jobs:
           fi
 
           # Add installation instructions
-          cat >> RELEASE_NOTES.md << 'INSTALL'
-
-          ---
-
-          ## 📦 Installation
-
-          ### Rust
-          ```bash
-          cargo add geniustechspace-core@$VERSION
-          cargo add geniustechspace-idp@$VERSION
-          cargo add geniustechspace-notification@$VERSION
-          ```
-
-          ### Python
-          ```bash
-          pip install geniustechspace-core==$VERSION
-          pip install geniustechspace-idp==$VERSION
-          pip install geniustechspace-notification==$VERSION
-          ```
-
-          ### TypeScript/JavaScript
-          ```bash
-          npm install @geniustechspace/core@$VERSION
-          npm install @geniustechspace/idp@$VERSION
-          npm install @geniustechspace/notification@$VERSION
-          ```
-
-          ### Go
-          ```bash
-          go get github.com/geniustechspace/api-contracts/clients/go/core@$TAG_NAME
-          go get github.com/geniustechspace/api-contracts/clients/go/idp@$TAG_NAME
-          go get github.com/geniustechspace/api-contracts/clients/go/notification@$TAG_NAME
-          ```
-
-          ### Java
-          ```xml
-          <dependency>
-            <groupId>com.geniustechspace</groupId>
-            <artifactId>api-contracts-core</artifactId>
-            <version>$VERSION</version>
-          </dependency>
-          <dependency>
-            <groupId>com.geniustechspace</groupId>
-            <artifactId>api-contracts-idp</artifactId>
-            <version>$VERSION</version>
-          </dependency>
-          <dependency>
-            <groupId>com.geniustechspace</groupId>
-            <artifactId>api-contracts-notification</artifactId>
-            <version>$VERSION</version>
-          </dependency>
-          ```
-
-          ---
+          echo "" >> RELEASE_NOTES.md
+          echo "---" >> RELEASE_NOTES.md
+          echo "" >> RELEASE_NOTES.md
+          echo "## 📦 Installation" >> RELEASE_NOTES.md
+          echo "" >> RELEASE_NOTES.md
+          
+          # Discover proto modules dynamically
+          MODULES=$(find proto -mindepth 1 -maxdepth 1 -type d -exec basename {} \; | sort)
+          
+          # Rust
+          echo "### Rust" >> RELEASE_NOTES.md
+          echo '```bash' >> RELEASE_NOTES.md
+          for module in $MODULES; do
+            echo "cargo add geniustechspace-${module}@$VERSION" >> RELEASE_NOTES.md
+          done
+          echo '```' >> RELEASE_NOTES.md
+          echo "" >> RELEASE_NOTES.md
+          
+          # Python
+          echo "### Python" >> RELEASE_NOTES.md
+          echo '```bash' >> RELEASE_NOTES.md
+          for module in $MODULES; do
+            echo "pip install geniustechspace-${module}==$VERSION" >> RELEASE_NOTES.md
+          done
+          echo '```' >> RELEASE_NOTES.md
+          echo "" >> RELEASE_NOTES.md
+          
+          # TypeScript/JavaScript
+          echo "### TypeScript/JavaScript" >> RELEASE_NOTES.md
+          echo '```bash' >> RELEASE_NOTES.md
+          for module in $MODULES; do
+            echo "npm install @geniustechspace/${module}@$VERSION" >> RELEASE_NOTES.md
+          done
+          echo '```' >> RELEASE_NOTES.md
+          echo "" >> RELEASE_NOTES.md
+          
+          # Go
+          echo "### Go" >> RELEASE_NOTES.md
+          echo '```bash' >> RELEASE_NOTES.md
+          for module in $MODULES; do
+            echo "go get github.com/geniustechspace/api-contracts/clients/go/${module}@$TAG_NAME" >> RELEASE_NOTES.md
+          done
+          echo '```' >> RELEASE_NOTES.md
+          echo "" >> RELEASE_NOTES.md
+          
+          # Java
+          echo "### Java" >> RELEASE_NOTES.md
+          echo '```xml' >> RELEASE_NOTES.md
+          for module in $MODULES; do
+            echo "<dependency>" >> RELEASE_NOTES.md
+            echo "  <groupId>com.geniustechspace</groupId>" >> RELEASE_NOTES.md
+            echo "  <artifactId>api-contracts-${module}</artifactId>" >> RELEASE_NOTES.md
+            echo "  <version>$VERSION</version>" >> RELEASE_NOTES.md
+            echo "</dependency>" >> RELEASE_NOTES.md
+          done
+          echo '```' >> RELEASE_NOTES.md
+          echo "" >> RELEASE_NOTES.md
+          echo "---" >> RELEASE_NOTES.md
 
           ## 🔗 Resources
 

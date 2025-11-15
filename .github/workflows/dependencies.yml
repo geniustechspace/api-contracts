@@ -111,14 +111,6 @@ jobs:
                 - "dependencies"
                 - "go"
 
-            - package-ecosystem: "gomod"
-              directory: "/clients/go/notification"
-              schedule:
-                interval: "weekly"
-              labels:
-                - "dependencies"
-                - "go"
-
             # Cargo (Rust)
             - package-ecosystem: "cargo"
               directory: "/clients/rust"
@@ -139,14 +131,6 @@ jobs:
 
             - package-ecosystem: "pip"
               directory: "/clients/python/idp"
-              schedule:
-                interval: "weekly"
-              labels:
-                - "dependencies"
-                - "python"
-
-            - package-ecosystem: "pip"
-              directory: "/clients/python/notification"
               schedule:
                 interval: "weekly"
               labels:

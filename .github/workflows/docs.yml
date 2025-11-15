@@ -139,7 +139,26 @@ jobs:
 
       - name: Create MkDocs Configuration
         run: |
-          cat > mkdocs.yml << 'EOF'
+          # Discover proto modules dynamically and sort them
+          readarray -t PROTO_MODULES < <(find proto -mindepth 1 -maxdepth 1 -type d -exec basename {} \; | sort)
+          
+          # Build Proto Reference section dynamically
+          PROTO_NAV=""
+          MODULE_COUNT=0
+          for module in "${PROTO_MODULES[@]}"; do
+            # Capitalize first letter for display
+            MODULE_DISPLAY=$(echo "$module" | sed 's/^./\U&/')
+            PROTO_NAV="${PROTO_NAV}              - ${MODULE_DISPLAY}: docs/generated/proto/markdown/${module}.md"$'\n'
+            MODULE_COUNT=$((MODULE_COUNT + 1))
+          done
+          
+          # Validate that we found modules
+          if [ $MODULE_COUNT -eq 0 ]; then
+            echo "Warning: No proto modules found for navigation"
+            PROTO_NAV="              - No modules: docs/README.md"$'\n'
+          fi
+          
+          cat > mkdocs.yml << EOF
           site_name: GeniusTechSpace API Contracts
           site_description: Enterprise-grade gRPC API contracts with multi-language client generation
           site_author: GeniusTechSpace
@@ -192,10 +211,7 @@ jobs:
               - SOC 2: docs/compliance/soc2.md
               - PCI DSS: docs/compliance/pci-dss.md
             - Proto Reference:
-              - Core: docs/generated/proto/markdown/core.md
-              - IDP: docs/generated/proto/markdown/idp.md
-              - Notification: docs/generated/proto/markdown/notification.md
-
+          ${PROTO_NAV}
           markdown_extensions:
             - pymdownx.highlight:
                 anchor_linenums: true
@@ -238,9 +254,16 @@ jobs:
 
           ## Proto Services
 
-          - [Core Services](proto/markdown/core.md) - Multitenancy, context, errors
-          - [IDP Services](proto/markdown/idp.md) - Identity and authentication
-          - [Notification Services](proto/markdown/notification.md) - Messaging and notifications
+          EOF
+          
+          # Dynamically generate Proto Services section
+          readarray -t PROTO_MODULES < <(find proto -mindepth 1 -maxdepth 1 -type d -exec basename {} \; | sort)
+          for module in "${PROTO_MODULES[@]}"; do
+            MODULE_DISPLAY=$(echo "$module" | sed 's/^./\U&/')
+            echo "- [${MODULE_DISPLAY} Services](proto/markdown/${module}.md)" >> docs/generated/index.md
+          done
+          
+          cat >> docs/generated/index.md << 'EOF'
 
           ## Client Libraries
 

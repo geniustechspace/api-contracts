@@ -26,6 +26,26 @@ The API Contracts repository uses a comprehensive CI/CD pipeline with the follow
 | **Security & Dependency Scanning** | Push, Schedule (daily)   | Security vulnerability scanning | ~30 min  |
 | **Dependency Updates**             | Schedule (weekly)        | Automated dependency updates    | ~10 min  |
 
+### Current Modules
+
+The repository currently contains the following proto modules:
+
+| Module | Status | Proto Files | Description |
+|--------|--------|-------------|-------------|
+| **core** | ✅ Active | 8 files | Core multitenancy, context, errors, pagination, tenant management, audit logging |
+| **idp** | 🚧 Planned | 0 files | Identity provider services (authentication, user management, RBAC) - skeleton only |
+
+### Module Discovery
+
+Workflows use **automatic module discovery** - they scan the `proto/` directory at runtime to find all modules. This means:
+
+- ✅ **Adding a new module**: Just create a new directory under `proto/` with your `.proto` files - workflows will automatically discover and build it
+- ✅ **No workflow edits needed**: Matrix strategies dynamically adjust to include all discovered modules
+- ✅ **Each module is a separate package**: Generated, built, tested, and published independently for all languages (Rust, Python, TypeScript, Go, Java)
+- ✅ **Independent versioning**: Each module/package can be versioned and published separately
+
+**Example**: To add a `notification` module, simply create `proto/notification/` with your proto files. The next workflow run will automatically build clients for it across all languages.
+
 ## Workflow Descriptions
 
 ### 1. CI/CD Pipeline (`ci.yml`)
@@ -40,24 +60,28 @@ The API Contracts repository uses a comprehensive CI/CD pipeline with the follow
 
 **Jobs**:
 
-1. **validate-proto**: Validates proto files with Buf (format, lint, breaking changes)
-2. **generate-clients**: Generates client code for all languages
-3. **build-rust**: Builds and tests Rust clients (primary language)
-4. **build-go**: Builds and tests Go clients
-5. **build-python**: Builds and tests Python clients
-6. **build-typescript**: Builds and tests TypeScript clients
-7. **build-java**: Builds and tests Java clients
-8. **security-scan**: Runs Trivy vulnerability scanner
-9. **ci-success**: Final status check
+1. **discover-modules**: Automatically discovers all proto modules by scanning the `proto/` directory
+2. **validate-proto**: Validates proto files with Buf (format, lint, breaking changes)
+3. **generate-clients**: Generates client code for all languages
+4. **build-rust**: Builds and tests Rust clients for all discovered modules (primary language)
+5. **build-go**: Builds and tests Go clients for all discovered modules
+6. **build-python**: Builds and tests Python clients for all discovered modules
+7. **build-typescript**: Builds and tests TypeScript clients for all discovered modules
+8. **build-java**: Builds and tests Java clients for all discovered modules
+9. **security-scan**: Runs Trivy vulnerability scanner
+10. **ci-success**: Final status check
+
+> **Note**: Jobs 4-8 use **dynamic matrix strategies** that automatically discover all modules in `proto/`. When you add a new module directory to `proto/`, it will be automatically included in all build and test jobs without needing to modify workflow files.
 
 **Features**:
 
+- **Automatic Module Discovery**: Dynamically discovers all proto modules - no workflow changes needed when adding new modules
 - **Consolidated Buf Action**: Uses `bufbuild/buf-action@v1` for enhanced integration
 - **Automatic PR Comments**: Buf action automatically comments on PRs with validation results
 - **Git Integration**: Enhanced Git data integration when working with Buf Schema Registry
 - Parallel execution for faster builds
 - Comprehensive caching for dependencies
-- Matrix builds for multiple packages
+- Dynamic matrix builds for all discovered packages
 - Code coverage reporting
 - Security audits (cargo-audit, etc.)
 - Automatic cancellation of superseded runs

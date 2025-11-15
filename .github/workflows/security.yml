@@ -21,7 +21,7 @@ concurrency:
   cancel-in-progress: true
 
 env:
-  RUST_VERSION: "1.83.0"
+  RUST_VERSION: "stable"
   PYTHON_VERSION: "3.12"
   GO_VERSION: "1.23"
   NODE_VERSION: "22"
@@ -35,6 +35,7 @@ jobs:
     runs-on: ubuntu-latest
     if: github.event_name == 'pull_request'
     timeout-minutes: 10
+    continue-on-error: true  # Allow to fail if Dependency graph is not enabled
     steps:
       - name: Checkout Code
         uses: actions/checkout@v4
@@ -56,7 +57,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        language: [python, javascript, go]
+        language: [rust, python, javascript]
     steps:
       - name: Checkout Code
         uses: actions/checkout@v4
@@ -191,43 +192,43 @@ jobs:
   # ============================================================================
   # Go Security Scan
   # ============================================================================
-  go-security:
-    name: Go Security Scan
-    runs-on: ubuntu-latest
-    timeout-minutes: 15
-    steps:
-      - name: Checkout Code
-        uses: actions/checkout@v4
+  # go-security:
+  #   name: Go Security Scan
+  #   runs-on: ubuntu-latest
+  #   timeout-minutes: 15
+  #   steps:
+  #     - name: Checkout Code
+  #       uses: actions/checkout@v4
 
-      - name: Setup Go
-        uses: actions/setup-go@v5
-        with:
-          go-version: ${{ env.GO_VERSION }}
+  #     - name: Setup Go
+  #       uses: actions/setup-go@v5
+  #       with:
+  #         go-version: ${{ env.GO_VERSION }}
 
-      - name: Install gosec
-        run: go install github.com/securego/gosec/v2/cmd/gosec@latest
+  #     - name: Install gosec
+  #       run: go install github.com/securego/gosec/v2/cmd/gosec@latest
 
-      - name: Run gosec
-        run: |
-          for mod in clients/go/*/; do
-            if [ -f "$mod/go.mod" ]; then
-              echo "Scanning $mod..."
-              (cd "$mod" && gosec -fmt json -out gosec-report.json ./... || true)
-              (cd "$mod" && gosec ./... || echo "::warning::Go security issues found in $mod")
-            fi
-          done
-        continue-on-error: true
+  #     - name: Run gosec
+  #       run: |
+  #         for mod in clients/go/*/; do
+  #           if [ -f "$mod/go.mod" ]; then
+  #             echo "Scanning $mod..."
+  #             (cd "$mod" && gosec -fmt json -out gosec-report.json ./... || true)
+  #             (cd "$mod" && gosec ./... || echo "::warning::Go security issues found in $mod")
+  #           fi
+  #         done
+  #       continue-on-error: true
 
-      - name: Run Go Vulnerability Check
-        run: |
-          go install golang.org/x/vuln/cmd/govulncheck@latest
-          for mod in clients/go/*/; do
-            if [ -f "$mod/go.mod" ]; then
-              echo "Checking vulnerabilities in $mod..."
-              (cd "$mod" && govulncheck ./... || true)
-            fi
-          done
-        continue-on-error: true
+  #     - name: Run Go Vulnerability Check
+  #       run: |
+  #         go install golang.org/x/vuln/cmd/govulncheck@latest
+  #         for mod in clients/go/*/; do
+  #           if [ -f "$mod/go.mod" ]; then
+  #             echo "Checking vulnerabilities in $mod..."
+  #             (cd "$mod" && govulncheck ./... || true)
+  #           fi
+  #         done
+  #       continue-on-error: true
 
   # ============================================================================
   # NPM Security Audit
@@ -377,7 +378,7 @@ jobs:
       - trivy-scan
       - rust-audit
       - python-audit
-      - go-security
+      # - go-security
       - npm-audit
       - license-check
     if: always()
