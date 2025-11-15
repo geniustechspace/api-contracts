@@ -95,14 +95,6 @@ for module in "${PROTO_MODULES[@]}"; do
 done
 check_extra_modules "rust" "clients/rust"
 
-# Validate Go
-echo ""
-print_info "Go Modules:"
-for module in "${PROTO_MODULES[@]}"; do
-    check_client_module "go" "$module" "clients/go/$module"
-done
-check_extra_modules "go" "clients/go"
-
 # Validate Python
 echo ""
 print_info "Python Packages:"
@@ -134,21 +126,6 @@ for module in "${PROTO_MODULES[@]}"; do
     fi
 done
 check_extra_modules "typescript" "clients/typescript/packages"
-
-# Validate Java
-echo ""
-print_info "Java Modules:"
-for module in "${PROTO_MODULES[@]}"; do
-    check_client_module "java" "$module" "clients/java/$module"
-    
-    # Check for pom.xml
-    if [ -f "clients/java/$module/pom.xml" ]; then
-        echo "    ✓ pom.xml present"
-    else
-        print_error "    pom.xml missing"
-        ERRORS=$((ERRORS + 1))
-    fi
-done
 
 # Summary
 echo ""

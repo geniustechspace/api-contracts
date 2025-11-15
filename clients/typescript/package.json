@@ -4,10 +4,9 @@
   "private": true,
   "description": "TypeScript/JavaScript clients for GeniusTechSpace API contracts",
   "workspaces": [
-    "packages/validate",
-    "packages/google",
     "packages/core",
-    "packages/idp"
+    "packages/idp",
+    "packages/notification"
   ],
   "scripts": {
     "build": "npm run build --workspaces",

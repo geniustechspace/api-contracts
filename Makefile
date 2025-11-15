@@ -29,12 +29,10 @@ help: ## Show this help message
 	@echo "  make sync-workspaces - Sync workspace configs with discovered modules"
 	@echo ""
 	@echo "🔨 Generation:"
-	@echo "  make generate       - Generate all clients (rust, go, python, typescript, java)"
+	@echo "  make generate       - Generate all clients (rust, python, typescript)"
 	@echo "  make generate-rust  - Generate Rust client only (PRIMARY)"
-	@echo "  make generate-go    - Generate Go client only"
 	@echo "  make generate-python - Generate Python client only"
 	@echo "  make generate-ts    - Generate TypeScript client only"
-	@echo "  make generate-java  - Generate Java client only"
 	@echo "  make generate-docs  - Generate documentation only"
 	@echo ""
 	@echo "✅ Quality:"
@@ -47,15 +45,12 @@ help: ## Show this help message
 	@echo "🏗️  Build:"
 	@echo "  make build          - Build all clients"
 	@echo "  make build-rust     - Build Rust client (PRIMARY)"
-	@echo "  make build-go       - Build Go client"
 	@echo "  make build-python   - Build Python client"
 	@echo "  make build-ts       - Build TypeScript client"
-	@echo "  make build-java     - Build Java client"
 	@echo ""
 	@echo "🧪 Test:"
 	@echo "  make test           - Run all tests"
 	@echo "  make test-rust      - Test Rust client"
-	@echo "  make test-go        - Test Go client"
 	@echo "  make test-python    - Test Python client"
 	@echo "  make test-ts        - Test TypeScript client"
 	@echo ""
@@ -145,10 +140,6 @@ generate-rust: ## Generate Rust client only (PRIMARY)
 		buf generate; \
 	fi
 
-generate-go: ## Generate Go client only
-	@echo "🐹 Generating Go client..."
-	@buf generate
-
 generate-python: ## Generate Python client only
 	@echo "🐍 Generating Python client..."
 	@if [ -f scripts/generate_python.sh ]; then \
@@ -164,10 +155,6 @@ generate-ts: ## Generate TypeScript client only
 	else \
 		buf generate; \
 	fi
-
-generate-java: ## Generate Java client only
-	@echo "☕ Generating Java client..."
-	@buf generate
 
 generate-docs: ## Generate documentation only
 	@echo "📚 Generating documentation..."
@@ -228,14 +215,6 @@ build-rust: ## Build Rust client (PRIMARY)
 		echo "⚠️  Rust client not found. Run 'make setup' first."; \
 	fi
 
-build-go: ## Build Go client
-	@echo "🐹 Building Go client..."
-	@if [ -f "clients/go/go.mod" ]; then \
-		cd clients/go && go build ./... && echo "✅ Go build complete!"; \
-	else \
-		echo "⚠️  Go client not found. Run 'make setup' first."; \
-	fi
-
 build-python: ## Build Python distribution packages (.whl files)
 	@echo "🐍 Building Python distribution packages..."
 	@if [ -f "scripts/build_python.py" ]; then \
@@ -255,14 +234,6 @@ build-ts: ## Build TypeScript client
 		echo "⚠️  TypeScript client not found. Run 'make setup' first."; \
 	fi
 
-build-java: ## Build Java client
-	@echo "☕ Building Java client..."
-	@if [ -f "clients/java/pom.xml" ]; then \
-		cd clients/java && mvn clean install && echo "✅ Java build complete!"; \
-	else \
-		echo "⚠️  Java client not found or Maven not configured."; \
-	fi
-
 # =============================================================================
 # Test
 # =============================================================================
@@ -275,14 +246,6 @@ test-rust: ## Test Rust client (PRIMARY)
 		cd clients/rust && cargo test && echo "✅ Rust tests passed!"; \
 	else \
 		echo "⚠️  Rust client not found."; \
-	fi
-
-test-go: ## Test Go client
-	@echo "🐹 Testing Go client..."
-	@if [ -f "clients/go/go.mod" ]; then \
-		cd clients/go && go test ./... && echo "✅ Go tests passed!"; \
-	else \
-		echo "⚠️  Go client not found."; \
 	fi
 
 test-python: ## Test Python client
@@ -308,10 +271,8 @@ test-ts: ## Test TypeScript client
 clean: ## Clean generated files
 	@echo "🧹 Cleaning generated files..."
 	@rm -rf clients/rust/proto clients/rust/target
-	@rm -rf clients/go/*/ clients/go/*.go
 	@rm -rf clients/python/proto clients/python/dist clients/python/build clients/python/*.egg-info
 	@rm -rf clients/typescript/proto clients/typescript/dist clients/typescript/node_modules
-	@rm -rf clients/java/target
 	@rm -rf docs/api/*.md docs/api/*.html docs/openapi/
 	@echo "✅ Clean complete!"
 

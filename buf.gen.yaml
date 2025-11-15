@@ -6,36 +6,34 @@ version: v2
 # This configuration generates CLIENT CODE ONLY for multiple languages.
 # NO SERVER CODE is generated or should be implemented.
 # 
-# Supported Languages (in priority order):
-# 1. Rust      - Primary language, client-only with no_server option
-# 2. Go        - Client stubs only (server stubs generated but unused)
-# 3. Python    - Client stubs only (server stubs generated but unused)
-# 4. TypeScript - Client code only (protobuf-ts generates clients by default)
-# 5. Java      - Client stubs only (server stubs generated but unused)
+# Supported Languages:
+# 1. Rust       - Primary language, client-only with no_server option
+# 2. Python     - Client stubs only (server stubs generated but unused)
+# 3. TypeScript - Client code only (protobuf-ts generates clients by default)
 #
 # Generated Output Structure:
 # - clients/rust/         → Rust crates (Tonic + Prost, client-only)
-# - clients/go/           → Go packages (use client stubs only)
 # - clients/python/       → Python packages (use client stubs only)
 # - clients/typescript/   → TypeScript/JavaScript packages (client-only)
-# - clients/java/         → Java packages (use client stubs only)
-# - docs/api/             → Generated documentation
+#
+# Each proto module (proto/core, proto/idp, etc.) generates a standalone 
+# package per language. Dependencies like google.protobuf and validate are
+# NOT generated as packages - they come from official registries.
 # =============================================================================
 
 # =============================================================================
 # Managed Mode Configuration
 # =============================================================================
 # Automatically manages package names and options across all generated code
+# Note: We only generate code for proto modules we own (proto/core, proto/idp, etc.)
+# Dependencies (google.protobuf, validate) are NOT generated - use official packages
 managed:
   enabled: true
-  override:
-    # Go package prefix
-    - file_option: go_package_prefix
-      value: github.com/geniustechspace/api-contracts/gen/go
-    
-    # Java package prefix
-    - file_option: java_package_prefix
-      value: com.geniustechspace.api
+  disable:
+    # Don't generate code for dependencies - use official packages from registries
+    - module: buf.build/googleapis/googleapis
+    - module: buf.build/envoyproxy/protoc-gen-validate
+    - module: buf.build/grpc-ecosystem/grpc-gateway
 
 # =============================================================================
 # Input Configuration
@@ -52,10 +50,10 @@ inputs:
 
 plugins:
   # ===========================================================================
-  # RUST - PRIMARY LANGUAGE (High-Performance Services)
+  # RUST - PRIMARY LANGUAGE
   # ===========================================================================
-  # Note: Rust uses a workspace structure. Generated code will be organized
-  # by proto module path: proto/core/v1 → clients/rust/core/proto/
+  # Each proto module becomes a separate Rust crate in the workspace
+  # Example: proto/core/v1 → clients/rust/core/
   
   # Rust: Prost v0.4.0 - Message serialization/deserialization
   # Latest stable plugin version for Prost 0.13.x and Tonic 0.12.x
@@ -65,7 +63,7 @@ plugins:
       # Use bytes::Bytes for better performance
       - bytes=.
   
-  # Rust: Tonic v0.4.0 - gRPC client code generation
+  # Rust: Tonic v0.4.0 - gRPC client code generation (client-only)
   # Latest stable plugin version for Tonic 0.12.x
   - remote: buf.build/community/neoeinstein-tonic:v0.4.0
     out: clients/rust
@@ -74,31 +72,11 @@ plugins:
       - no_server
   
   # ===========================================================================
-  # GO - BACKEND SERVICES
-  # ===========================================================================
-  # Note: Go uses separate modules. proto/core/v1 → clients/go/core/v1/
-  
-  # Go: Protocol Buffer messages (protoc-gen-go v1.35.2 - November 2024)
-  # Compatible with google.golang.org/protobuf v1.35.2
-  - remote: buf.build/protocolbuffers/go:v1.35.2
-    out: clients/go
-    opt:
-      - paths=source_relative
-  
-  # Go: gRPC client stubs (protoc-gen-go-grpc v1.5.1 - September 2024)
-  # Compatible with google.golang.org/grpc v1.68.x
-  # Note: Go plugin generates both client and server stubs. Server stubs are
-  # interfaces only and should not be implemented - use client stubs only.
-  - remote: buf.build/grpc/go:v1.5.1
-    out: clients/go
-    opt:
-      - paths=source_relative
-      - require_unimplemented_servers=false
-  
-  # ===========================================================================
   # PYTHON - ML/DATA SERVICES & SCRIPTS
   # ===========================================================================
-  # Note: Python uses separate packages. proto/core/v1 → clients/python/core/
+  # Each proto module becomes a separate Python package
+  # Example: proto/core/v1 → clients/python/core/
+  # Dependencies: Use official packages from PyPI (protobuf, grpcio)
   
   # Python: Protocol Buffer messages (protoc-gen-python v28.3 - November 2024)
   # Compatible with protobuf>=5.28.0
@@ -114,7 +92,9 @@ plugins:
   # ===========================================================================
   # TYPESCRIPT - WEB & NODE.JS
   # ===========================================================================
-  # Note: TypeScript uses npm workspaces. proto/core/v1 → clients/typescript/packages/core/
+  # Each proto module becomes a separate npm package in the workspace
+  # Example: proto/core/v1 → clients/typescript/packages/core/
+  # Dependencies: Use official packages from npm (@grpc/grpc-js, protobufjs)
   
   # TypeScript: protobuf-ts v2.9.4 - Modern TypeScript support (October 2024)
   # Latest stable version with full TypeScript 5.x support
@@ -123,16 +103,3 @@ plugins:
     opt:
       # Use string for 64-bit integers (JavaScript compatibility)
       - long_type_string
-  
-  # ===========================================================================
-  # JAVA - ENTERPRISE INTEGRATION
-  # ===========================================================================
-  
-  # Java: Protocol Buffer messages (protoc-gen-java v28.3 - November 2024)
-  - remote: buf.build/protocolbuffers/java:v28.3
-    out: clients/java
-  
-  # Java: gRPC client stubs (grpc-java v1.68.1 - November 2024)
-  # Note: Java plugin generates both client and server stubs - use client stubs only.
-  - remote: buf.build/grpc/java:v1.68.1
-    out: clients/java

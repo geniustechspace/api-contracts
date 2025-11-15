@@ -17,7 +17,7 @@ RUN apt-get update && apt-get install -y \
     && rm -rf /var/lib/apt/lists/*
 
 # Install Buf
-RUN BUF_VERSION="1.28.1" && \
+RUN BUF_VERSION="1.59.0" && \
     curl -sSL "https://github.com/bufbuild/buf/releases/download/v${BUF_VERSION}/buf-Linux-x86_64" \
     -o /usr/local/bin/buf && \
     chmod +x /usr/local/bin/buf

@@ -44,7 +44,7 @@ install_buf() {
             return 1
         fi
     elif [ "$OS_NAME" = "Linux" ]; then
-        BUF_VERSION="1.47.2"  # Updated to latest stable (January 2025)
+        BUF_VERSION="1.59.0"  # Updated to latest stable (November 2025)
         curl -sSL "https://github.com/bufbuild/buf/releases/download/v${BUF_VERSION}/buf-Linux-x86_64" \
             -o /tmp/buf
         sudo mv /tmp/buf /usr/local/bin/buf
@@ -171,31 +171,6 @@ if command_exists npm && [ -d "$ROOT_DIR/clients/typescript" ]; then
     print_success "TypeScript workspace configured"
 fi
 
-# Setup Go modules
-if command_exists go; then
-    print_info "Setting up Go modules..."
-    cd "$ROOT_DIR/clients/go"
-    
-    for module in "${PROTO_MODULES[@]}"; do
-        if [ -d "$module" ] && [ -f "$module/go.mod" ]; then
-            print_info "  Setting up Go $module..."
-            cd "$module"
-            go mod download 2>/dev/null || true
-            cd ..
-        fi
-    done
-    
-    print_success "Go modules configured"
-fi
-
-# Setup Java Maven
-if command_exists mvn && [ -d "$ROOT_DIR/clients/java" ] && [ -f "$ROOT_DIR/clients/java/pom.xml" ]; then
-    print_info "Setting up Java Maven project..."
-    cd "$ROOT_DIR/clients/java"
-    mvn dependency:resolve --quiet 2>/dev/null || true
-    print_success "Java Maven configured"
-fi
-
 print_section "Generating Clients"
 
 # Generate all clients
@@ -223,8 +198,9 @@ echo "  4. Run tests: make test"
 echo ""
 print_info "Client locations:"
 echo "  Rust:       clients/rust/<module>/"
-echo "  Go:         clients/go/<module>/"
 echo "  Python:     clients/python/<module>/ (with .venv)"
 echo "  TypeScript: clients/typescript/packages/<module>/ (with node_modules)"
-echo "  Java:       clients/java/<module>/"
+echo ""
+print_info "Note: Each proto module is a standalone package per language."
+echo "  Dependencies (google.protobuf, validate) come from official registries."
 echo ""
